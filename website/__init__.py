@@ -92,14 +92,27 @@ def create_app():
             try:
                 with app.app_context():
                     # Test connection
-                    db.session.execute(text("SELECT 1"))
+                    result = db.session.execute(text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')"))
+                    has_users_table = result.scalar()
                     db.session.commit()
-                    print(f"Database connection verified on attempt {attempt + 1}!", file=sys.stderr)
                     
-                    # Create tables
-                    db.create_all()
-                    print("Database tables created successfully!", file=sys.stderr)
+                    if not has_users_table:
+                        print("Tables don't exist yet, creating them...", file=sys.stderr)
+                        # Create tables
+                        db.create_all()
+                        print("Database tables created successfully!", file=sys.stderr)
+                    else:
+                        print("Database tables already exist!", file=sys.stderr)
+                    
+                    # Verify tables were created
+                    tables = db.session.execute(text("""
+                        SELECT table_name 
+                        FROM information_schema.tables 
+                        WHERE table_schema = 'public'
+                    """)).fetchall()
+                    print(f"Available tables: {[table[0] for table in tables]}", file=sys.stderr)
                     return True
+                    
             except OperationalError as e:
                 last_error = e
                 print(f"Database connection attempt {attempt + 1} failed: {str(e)}", file=sys.stderr)
