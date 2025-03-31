@@ -2,64 +2,96 @@
 {% block title %}Sign Up{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h2 class="text-center mb-4">Create Account</h2>
-                    <p class="text-center text-muted mb-4">Start managing your expenses today</p>
-                    
-                    <form method="POST" id="signUpForm">
+<div class="container">
+    <div class="row justify-content-center align-items-center min-vh-100">
+        <div class="col-md-6 col-lg-5">
+            <div class="text-center mb-4">
+                <h1 class="display-4 mb-2">Create Account</h1>
+                <p class="text-muted">Start managing your expenses today</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <form method="POST" id="signUpForm" class="needs-validation" novalidate>
                         <div class="form-group">
+                            <label for="firstName">First Name</label>
                             <input
                                 type="text"
-                                class="form-control"
+                                class="form-control form-control-lg"
                                 id="firstName"
                                 name="first-name"
-                                placeholder="First Name"
+                                placeholder="Enter your first name"
                                 required
                                 minlength="2"
                             />
+                            <div class="invalid-feedback">
+                                First name must be at least 2 characters long
+                            </div>
                         </div>
+
                         <div class="form-group">
+                            <label for="lastName">Last Name</label>
                             <input
                                 type="text"
-                                class="form-control"
+                                class="form-control form-control-lg"
                                 id="lastName"
                                 name="last-name"
-                                placeholder="Last Name"
+                                placeholder="Enter your last name"
                                 required
                                 minlength="2"
                             />
+                            <div class="invalid-feedback">
+                                Last name must be at least 2 characters long
+                            </div>
                         </div>
+
                         <div class="form-group">
+                            <label for="email">Email Address</label>
                             <input
                                 type="email"
-                                class="form-control"
+                                class="form-control form-control-lg"
                                 id="email"
                                 name="email"
-                                placeholder="Email Address"
+                                placeholder="Enter your email"
                                 required
                             />
-                            <small id="emailError" class="form-text text-danger" style="display: none;">
-                                This email is already registered
-                            </small>
+                            <div class="invalid-feedback" id="emailError" style="display: none;">
+                                Please enter a valid email address
+                            </div>
                         </div>
+
                         <div class="form-group">
+                            <label for="password">Password</label>
                             <input
                                 type="password"
-                                class="form-control"
+                                class="form-control form-control-lg"
                                 id="password"
                                 name="password"
-                                placeholder="Password"
+                                placeholder="Create a password"
                                 required
                                 minlength="7"
                             />
                             <small class="form-text text-muted">
-                                Password must be at least 7 characters long
+                                Must be at least 7 characters long
                             </small>
+                            <div class="invalid-feedback">
+                                Password must be at least 7 characters long
+                            </div>
                         </div>
+
                         <div class="form-group">
                             <div class="custom-control custom-checkbox">
                                 <input
@@ -72,17 +104,26 @@
                                 <label class="custom-control-label" for="terms">
                                     I agree to the Terms & Conditions
                                 </label>
+                                <div class="invalid-feedback">
+                                    You must agree to the Terms & Conditions
+                                </div>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
+
+                        <button type="submit" class="btn btn-primary btn-lg btn-block mt-4" id="submitBtn">
                             Create Account
                         </button>
                     </form>
-                    
-                    <div class="text-center mt-3">
-                        <p>Already have an account? <a href="/login">Login</a></p>
-                    </div>
                 </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <p class="mb-0">
+                    Already have an account? 
+                    <a href="{{ url_for('auth.login') }}" class="font-weight-bold">
+                        Login
+                    </a>
+                </p>
             </div>
         </div>
     </div>
@@ -127,13 +168,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Add validation styles on input
+    form.querySelectorAll('.form-control').forEach(input => {
+        input.addEventListener('input', function() {
+            if (this.checkValidity()) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            } else {
+                this.classList.remove('is-valid');
+                this.classList.add('is-invalid');
+            }
+        });
+    });
+    
     // Email input handler with debounce
     emailInput.addEventListener('input', function() {
         clearTimeout(emailTimeout);
         const email = this.value.trim();
         
         if (!email || !isValidEmail(email)) {
-            emailError.style.display = 'none';
+            emailError.style.display = 'block';
+            emailError.textContent = 'Please enter a valid email address';
+            this.classList.add('is-invalid');
             return;
         }
         
@@ -142,9 +198,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (exists) {
                 emailError.style.display = 'block';
                 emailError.textContent = 'This email is already registered';
+                this.classList.add('is-invalid');
                 submitBtn.disabled = true;
             } else {
                 emailError.style.display = 'none';
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
                 submitBtn.disabled = false;
             }
         }, 500);
@@ -153,6 +212,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Form submission handler
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
+        
+        // Add was-validated class to show validation feedback
+        this.classList.add('was-validated');
         
         // Validate all fields
         const firstName = document.getElementById('firstName').value.trim();
@@ -163,27 +225,20 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Basic validation
         if (!firstName || !lastName || !email || !password || !terms) {
-            alert('Please fill in all fields and accept the terms');
             return;
         }
         
-        if (firstName.length < 2) {
-            alert('First name must be at least 2 characters long');
-            return;
-        }
-        
-        if (lastName.length < 2) {
-            alert('Last name must be at least 2 characters long');
+        if (firstName.length < 2 || lastName.length < 2) {
             return;
         }
         
         if (!isValidEmail(email)) {
-            alert('Please enter a valid email address');
+            emailError.style.display = 'block';
+            emailError.textContent = 'Please enter a valid email address';
             return;
         }
         
         if (password.length < 7) {
-            alert('Password must be at least 7 characters long');
             return;
         }
         
@@ -192,8 +247,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (exists) {
             emailError.style.display = 'block';
             emailError.textContent = 'This email is already registered';
+            emailInput.classList.add('is-invalid');
             return;
         }
+        
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>Creating account...';
         
         // If all validations pass, submit the form
         this.submit();
