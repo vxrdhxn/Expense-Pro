@@ -97,50 +97,47 @@ def sign_up():
                 flash('Please fill in all fields and accept the terms', category='error')
                 return render_template("sign_up.html", user=None)
             
-            try:
-                existing_user = User.query.filter_by(email=email).first()
-            except SQLAlchemyError as e:
-                print(f"Database error checking existing user: {str(e)}", file=sys.stderr)
-                flash('An error occurred while checking email availability. Please try again.', category='error')
+            if not is_valid_email(email):
+                flash('Please enter a valid email address', category='error')
                 return render_template("sign_up.html", user=None)
             
-            if existing_user:
-                flash('Email already exists.', category='error')
-            elif len(email) < 4:
-                flash('Email must be greater than 3 characters.', category='error')
-            elif len(first_name) < 2:
-                flash('First name must be greater than 1 character.', category='error')
-            elif len(password) < 7:
-                flash('Password must be at least 7 characters.', category='error')
-            else:
-                try:
-                    # Create new user
-                    new_user = User(
-                        email=email,
-                        first_name=first_name,
-                        last_name=last_name,
-                        password=password  # This will use the password setter
-                    )
-                    db.session.add(new_user)
-                    db.session.commit()
-                    
-                    # Log in the new user
-                    login_user(new_user, remember=True)
-                    
-                    flash('Account created successfully!', category='success')
-                    print(f"User created successfully: {email}", file=sys.stderr)
-                    return redirect(url_for('views.home'))
-                    
-                except SQLAlchemyError as e:
-                    db.session.rollback()
-                    print(f"Database error creating new user: {str(e)}", file=sys.stderr)
-                    print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
-                    flash('An error occurred while creating your account. Please try again.', category='error')
-                except Exception as e:
-                    db.session.rollback()
-                    print(f"Unexpected error creating user: {str(e)}", file=sys.stderr)
-                    print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
-                    flash('An unexpected error occurred. Please try again.', category='error')
+            try:
+                existing_user = User.query.filter_by(email=email).first()
+                if existing_user:
+                    flash('Email already exists.', category='error')
+                    return render_template("sign_up.html", user=None)
+                
+                # Create new user
+                new_user = User(
+                    email=email,
+                    first_name=first_name,
+                    last_name=last_name,
+                    password=password  # This will use the password setter
+                )
+                db.session.add(new_user)
+                db.session.commit()
+                
+                # Log in the new user
+                login_user(new_user, remember=True)
+                
+                flash('Account created successfully!', category='success')
+                print(f"User created successfully: {email}", file=sys.stderr)
+                return redirect(url_for('views.home'))
+                
+            except IntegrityError as e:
+                db.session.rollback()
+                print(f"Database integrity error: {str(e)}", file=sys.stderr)
+                flash('This email is already registered.', category='error')
+            except SQLAlchemyError as e:
+                db.session.rollback()
+                print(f"Database error creating new user: {str(e)}", file=sys.stderr)
+                print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
+                flash('An error occurred while creating your account. Please try again.', category='error')
+            except Exception as e:
+                db.session.rollback()
+                print(f"Unexpected error creating user: {str(e)}", file=sys.stderr)
+                print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
+                flash('An unexpected error occurred. Please try again.', category='error')
         
         return render_template("sign_up.html", user=None)
     except Exception as e:
@@ -164,14 +161,22 @@ def logout():
 @auth.route('/check-email', methods=['POST'])
 def check_email():
     try:
-        email = request.json.get('email')
-        if not email:
+        data = request.get_json()
+        if not data or 'email' not in data:
             return jsonify({'error': 'No email provided'}), 400
+            
+        email = data['email']
+        if not is_valid_email(email):
+            return jsonify({'error': 'Invalid email format'}), 400
             
         user = User.query.filter_by(email=email).first()
         return jsonify({'exists': user is not None})
+    except SQLAlchemyError as e:
+        print(f"Database error checking email: {str(e)}", file=sys.stderr)
+        return jsonify({'error': 'Database error'}), 500
     except Exception as e:
         print(f"Error checking email: {str(e)}", file=sys.stderr)
+        print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
         return jsonify({'error': 'Server error'}), 500
 
 

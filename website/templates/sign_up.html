@@ -2,70 +2,202 @@
 {% block title %}Sign Up{% endblock %}
 
 {% block content %}
-<div class="max-w-md mx-auto px-6">
-    <!-- Hero Section -->
-    <div class="text-center mb-12">
-        <h1 class="text-5xl font-semibold tracking-tight mb-4">Create Account</h1>
-        <p class="text-xl text-gray-400">Start managing your expenses today</p>
-    </div>
-
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="mb-8 animate-fade-in">
-                    <div class="px-6 py-4 {% if category == 'error' %}bg-red-500/10 text-red-500{% else %}bg-green-500/10 text-green-500{% endif %} rounded-2xl backdrop-blur-xl">
-                        {{ message }}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="text-center mb-4">Create Account</h2>
+                    <p class="text-center text-muted mb-4">Start managing your expenses today</p>
+                    
+                    <form method="POST" id="signUpForm">
+                        <div class="form-group">
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="firstName"
+                                name="first-name"
+                                placeholder="First Name"
+                                required
+                                minlength="2"
+                            />
+                        </div>
+                        <div class="form-group">
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="lastName"
+                                name="last-name"
+                                placeholder="Last Name"
+                                required
+                                minlength="2"
+                            />
+                        </div>
+                        <div class="form-group">
+                            <input
+                                type="email"
+                                class="form-control"
+                                id="email"
+                                name="email"
+                                placeholder="Email Address"
+                                required
+                            />
+                            <small id="emailError" class="form-text text-danger" style="display: none;">
+                                This email is already registered
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <input
+                                type="password"
+                                class="form-control"
+                                id="password"
+                                name="password"
+                                placeholder="Password"
+                                required
+                                minlength="7"
+                            />
+                            <small class="form-text text-muted">
+                                Password must be at least 7 characters long
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <div class="custom-control custom-checkbox">
+                                <input
+                                    type="checkbox"
+                                    class="custom-control-input"
+                                    id="terms"
+                                    name="terms"
+                                    required
+                                />
+                                <label class="custom-control-label" for="terms">
+                                    I agree to the Terms & Conditions
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
+                            Create Account
+                        </button>
+                    </form>
+                    
+                    <div class="text-center mt-3">
+                        <p>Already have an account? <a href="/login">Login</a></p>
                     </div>
                 </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    <!-- Sign Up Form -->
-    <form method="POST" class="card p-8 space-y-6">
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm font-medium mb-2 text-gray-400" for="first-name">First Name</label>
-                <input type="text" id="first-name" name="first-name" required
-                    class="input-field w-full"
-                    placeholder="Enter first name">
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-2 text-gray-400" for="last-name">Last Name</label>
-                <input type="text" id="last-name" name="last-name" required
-                    class="input-field w-full"
-                    placeholder="Enter last name">
             </div>
         </div>
-        <div>
-            <label class="block text-sm font-medium mb-2 text-gray-400" for="email">Email</label>
-            <input type="email" id="email" name="email" required
-                class="input-field w-full"
-                placeholder="Enter your email">
-        </div>
-        <div>
-            <label class="block text-sm font-medium mb-2 text-gray-400" for="password">Password</label>
-            <input type="password" id="password" name="password" required
-                class="input-field w-full"
-                placeholder="Create a password">
-        </div>
-        <div class="flex items-center space-x-2">
-            <input type="checkbox" id="terms" name="terms" required
-                class="rounded border-gray-300 text-accent-color focus:ring-accent-color">
-            <label class="text-sm text-gray-400" for="terms">
-                I accept the Terms & Conditions
-            </label>
-        </div>
-        <button type="submit" class="button-primary w-full">
-            Create Account
-        </button>
-        <p class="text-center text-sm text-gray-400">
-            Already have an account? 
-            <a href="{{ url_for('auth.login') }}" class="text-accent-color hover:underline">
-                Sign in here
-            </a>
-        </p>
-    </form>
+    </div>
 </div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('signUpForm');
+    const emailInput = document.getElementById('email');
+    const emailError = document.getElementById('emailError');
+    const submitBtn = document.getElementById('submitBtn');
+    let emailTimeout;
+    
+    // Function to validate email format
+    function isValidEmail(email) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
+    }
+    
+    // Function to check if email exists
+    async function checkEmail(email) {
+        try {
+            const response = await fetch('/check-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email: email })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            
+            const data = await response.json();
+            return data.exists;
+        } catch (error) {
+            console.error('Error checking email:', error);
+            return false;
+        }
+    }
+    
+    // Email input handler with debounce
+    emailInput.addEventListener('input', function() {
+        clearTimeout(emailTimeout);
+        const email = this.value.trim();
+        
+        if (!email || !isValidEmail(email)) {
+            emailError.style.display = 'none';
+            return;
+        }
+        
+        emailTimeout = setTimeout(async () => {
+            const exists = await checkEmail(email);
+            if (exists) {
+                emailError.style.display = 'block';
+                emailError.textContent = 'This email is already registered';
+                submitBtn.disabled = true;
+            } else {
+                emailError.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        }, 500);
+    });
+    
+    // Form submission handler
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Validate all fields
+        const firstName = document.getElementById('firstName').value.trim();
+        const lastName = document.getElementById('lastName').value.trim();
+        const email = emailInput.value.trim();
+        const password = document.getElementById('password').value;
+        const terms = document.getElementById('terms').checked;
+        
+        // Basic validation
+        if (!firstName || !lastName || !email || !password || !terms) {
+            alert('Please fill in all fields and accept the terms');
+            return;
+        }
+        
+        if (firstName.length < 2) {
+            alert('First name must be at least 2 characters long');
+            return;
+        }
+        
+        if (lastName.length < 2) {
+            alert('Last name must be at least 2 characters long');
+            return;
+        }
+        
+        if (!isValidEmail(email)) {
+            alert('Please enter a valid email address');
+            return;
+        }
+        
+        if (password.length < 7) {
+            alert('Password must be at least 7 characters long');
+            return;
+        }
+        
+        // Check email one last time before submission
+        const exists = await checkEmail(email);
+        if (exists) {
+            emailError.style.display = 'block';
+            emailError.textContent = 'This email is already registered';
+            return;
+        }
+        
+        // If all validations pass, submit the form
+        this.submit();
+    });
+});
+</script>
 {% endblock %}
