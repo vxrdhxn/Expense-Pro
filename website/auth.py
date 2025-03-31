@@ -6,6 +6,7 @@ from . import db
 import re
 import sys
 import traceback
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
 
 auth = Blueprint('auth', __name__)
 
@@ -19,23 +20,27 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         
-        user = User.query.filter_by(email=email).first()
-        if user:
-            if user.verify_password(password):
-                flash('Logged in successfully!', category='success')
-                login_user(user, remember=True)
-                return redirect(url_for('views.home'))
+        try:
+            user = User.query.filter_by(email=email).first()
+            if user:
+                if user.verify_password(password):
+                    flash('Logged in successfully!', category='success')
+                    login_user(user, remember=True)
+                    return redirect(url_for('views.home'))
+                else:
+                    flash('Incorrect password.', category='error')
             else:
-                flash('Incorrect password.', category='error')
-        else:
-            flash('Email does not exist.', category='error')
+                flash('Email does not exist.', category='error')
+        except Exception as e:
+            print(f"Error during login: {str(e)}", file=sys.stderr)
+            flash('An error occurred during login. Please try again.', category='error')
     
     return render_template("login.html", user=current_user)
 
 @auth.route('/sign-up', methods=['GET', 'POST'])
 def sign_up():
-    try:
-        if request.method == 'POST':
+    if request.method == 'POST':
+        try:
             print("Processing sign-up POST request", file=sys.stderr)
             
             # Get form data
@@ -115,18 +120,31 @@ def sign_up():
                 flash('Account created successfully!', category='success')
                 return redirect(url_for('views.home'))
 
-            except Exception as e:
+            except IntegrityError as e:
                 db.session.rollback()
-                print(f"Database error during user creation: {str(e)}", file=sys.stderr)
+                print(f"Database integrity error: {str(e)}", file=sys.stderr)
+                flash('This email is already registered.', category='error')
+                return render_template("sign_up.html", user=current_user)
+                
+            except OperationalError as e:
+                db.session.rollback()
+                print(f"Database operational error: {str(e)}", file=sys.stderr)
+                print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
+                flash('Unable to connect to the database. Please try again later.', category='error')
+                return render_template("sign_up.html", user=current_user)
+                
+            except SQLAlchemyError as e:
+                db.session.rollback()
+                print(f"Database error: {str(e)}", file=sys.stderr)
                 print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
                 flash('An error occurred while creating your account. Please try again.', category='error')
                 return render_template("sign_up.html", user=current_user)
 
-    except Exception as e:
-        print(f"Unexpected error in sign_up route: {str(e)}", file=sys.stderr)
-        print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
-        flash('An unexpected error occurred. Please try again.', category='error')
-        return render_template("sign_up.html", user=current_user)
+        except Exception as e:
+            print(f"Unexpected error in sign_up route: {str(e)}", file=sys.stderr)
+            print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
+            flash('An unexpected error occurred. Please try again.', category='error')
+            return render_template("sign_up.html", user=current_user)
 
     return render_template("sign_up.html", user=current_user)
 

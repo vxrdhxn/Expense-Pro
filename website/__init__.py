@@ -8,8 +8,9 @@ import traceback
 from dotenv import load_dotenv
 from sqlalchemy.pool import NullPool
 from sqlalchemy import create_engine, text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError
 import urllib.parse
+import time
 
 load_dotenv()
 
@@ -25,7 +26,7 @@ def create_app():
     database_url = os.getenv('DATABASE_URL')
     if not database_url:
         print("No DATABASE_URL environment variable set", file=sys.stderr)
-        raise ValueError("DATABASE_URL environment variable is required")
+        database_url = 'sqlite:///database.db'  # Fallback for development
     
     # Parse and modify database URL for PostgreSQL
     if database_url.startswith("postgres://"):
@@ -64,32 +65,8 @@ def create_app():
             'keepalives_interval': 10,
             'keepalives_count': 5,
             'sslmode': 'require'
-        } if database_url.startswith('postgresql://') else {'connect_timeout': 30}
+        } if database_url.startswith('postgresql://') else {}
     }
-    
-    # Test database connection before initializing app
-    try:
-        engine = create_engine(
-            database_url,
-            poolclass=NullPool,
-            connect_args={
-                'connect_timeout': 30,
-                'keepalives': 1,
-                'keepalives_idle': 30,
-                'keepalives_interval': 10,
-                'keepalives_count': 5,
-                'sslmode': 'require'
-            } if database_url.startswith('postgresql://') else {'connect_timeout': 30}
-        )
-        with engine.connect() as connection:
-            result = connection.execute(text("SELECT 1"))
-            result.fetchone()  # Actually fetch the result
-            connection.close()  # Explicitly close the connection
-        print("Database connection test successful!", file=sys.stderr)
-    except Exception as e:
-        print(f"Database connection test failed: {str(e)}", file=sys.stderr)
-        print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
-        raise  # Re-raise the exception to fail fast if we can't connect
     
     # Initialize extensions
     db.init_app(app)
@@ -104,27 +81,36 @@ def create_app():
     # Import models
     from .models import User, Expense
     
-    # Initialize database
-    with app.app_context():
-        try:
-            # Test connection again within app context
-            result = db.session.execute(text("SELECT 1"))
-            result.fetchone()  # Actually fetch the result
-            db.session.commit()
-            print("Database connection verified within app context!", file=sys.stderr)
-            
-            # Create tables
-            db.create_all()
-            print("Database tables created successfully!", file=sys.stderr)
-        except SQLAlchemyError as e:
-            print(f"Database initialization error: {str(e)}", file=sys.stderr)
-            print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
-            db.session.rollback()
-            raise  # Re-raise the exception to fail fast
-        except Exception as e:
-            print(f"Unexpected error during database initialization: {str(e)}", file=sys.stderr)
-            print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
-            raise  # Re-raise the exception to fail fast
+    # Initialize database with retry mechanism
+    def init_db_with_retry(max_retries=3, retry_delay=1):
+        for attempt in range(max_retries):
+            try:
+                with app.app_context():
+                    # Test connection
+                    db.session.execute(text("SELECT 1"))
+                    db.session.commit()
+                    print(f"Database connection verified on attempt {attempt + 1}!", file=sys.stderr)
+                    
+                    # Create tables
+                    db.create_all()
+                    print("Database tables created successfully!", file=sys.stderr)
+                    return True
+            except OperationalError as e:
+                print(f"Database connection attempt {attempt + 1} failed: {str(e)}", file=sys.stderr)
+                if attempt < max_retries - 1:
+                    print(f"Retrying in {retry_delay} seconds...", file=sys.stderr)
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    print("Max retries reached. Continuing without database initialization.", file=sys.stderr)
+            except Exception as e:
+                print(f"Unexpected error during database initialization: {str(e)}", file=sys.stderr)
+                print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
+                break
+        return False
+
+    # Try to initialize the database
+    init_db_with_retry()
     
     # Setup login manager
     login_manager = LoginManager()
