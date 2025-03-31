@@ -8,7 +8,7 @@ import traceback
 from dotenv import load_dotenv
 from sqlalchemy.pool import NullPool
 from sqlalchemy import create_engine, text
-from sqlalchemy.exc import SQLAlchemyError, OperationalError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, TimeoutError
 import urllib.parse
 import time
 
@@ -22,11 +22,13 @@ def create_app():
     # Basic configuration
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'project123')
     
-    # Database configuration
+    # Database configuration with detailed logging
     database_url = os.getenv('DATABASE_URL')
     if not database_url:
         print("No DATABASE_URL environment variable set", file=sys.stderr)
         raise ValueError("DATABASE_URL environment variable is required")
+    
+    print("Initializing database connection...", file=sys.stderr)
     
     # Parse and modify database URL for PostgreSQL
     if database_url.startswith("postgres://"):
@@ -39,12 +41,10 @@ def create_app():
         # Add required parameters for Supabase
         query_dict.update({
             'sslmode': 'require',
-            'connect_timeout': '30',
+            'connect_timeout': '10',  # Reduced from 30
             'application_name': 'expense_pro',
-            'pool_pre_ping': 'true',
-            'pool_timeout': '30',
-            'pool_recycle': '1800',
-            'max_overflow': '0'
+            'statement_timeout': '10000',  # 10 seconds
+            'idle_in_transaction_session_timeout': '10000'  # 10 seconds
         })
         
         # Reconstruct the URL with updated query parameters
@@ -64,24 +64,33 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'poolclass': NullPool,
+        'poolclass': NullPool,  # Disable connection pooling
         'connect_args': {
-            'connect_timeout': 30,
+            'connect_timeout': 10,
             'application_name': 'expense_pro',
-            'keepalives': 1,
-            'keepalives_idle': 30,
-            'keepalives_interval': 10,
-            'keepalives_count': 5,
-            'sslmode': 'require'
-        },
-        'pool_pre_ping': True,
-        'pool_timeout': 30,
-        'pool_recycle': 1800,
-        'max_overflow': 0
+            'sslmode': 'require',
+            'options': '-c statement_timeout=10000 -c idle_in_transaction_session_timeout=10000'
+        }
     }
     
     # Initialize extensions
     db.init_app(app)
+    
+    # Health check endpoint
+    @app.route('/health')
+    def health_check():
+        try:
+            # Test database connection
+            db.session.execute(text('SELECT 1'))
+            db.session.commit()
+            return jsonify({'status': 'healthy', 'database': 'connected'}), 200
+        except Exception as e:
+            print(f"Health check failed: {str(e)}", file=sys.stderr)
+            return jsonify({
+                'status': 'unhealthy',
+                'database': 'disconnected',
+                'error': str(e)
+            }), 500
     
     # Register blueprints
     from .views import views
@@ -99,15 +108,18 @@ def create_app():
         for attempt in range(max_retries):
             try:
                 with app.app_context():
-                    # Test connection with timeout
-                    result = db.session.execute(text("SELECT 1"))
+                    print(f"Attempt {attempt + 1}: Testing database connection...", file=sys.stderr)
+                    # Test connection
+                    result = db.session.execute(text('SELECT 1'))
                     result.fetchone()
                     db.session.commit()
-                    print(f"Database connection verified on attempt {attempt + 1}!", file=sys.stderr)
+                    print(f"Database connection successful on attempt {attempt + 1}!", file=sys.stderr)
                     return True
-            except OperationalError as e:
+            except (OperationalError, TimeoutError) as e:
                 last_error = e
                 print(f"Database connection attempt {attempt + 1} failed: {str(e)}", file=sys.stderr)
+                print(f"Error type: {type(e).__name__}", file=sys.stderr)
+                print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
                 if attempt < max_retries - 1:
                     print(f"Retrying in {retry_delay} seconds...", file=sys.stderr)
                     time.sleep(retry_delay)
@@ -117,21 +129,19 @@ def create_app():
             except Exception as e:
                 last_error = e
                 print(f"Unexpected error during database initialization: {str(e)}", file=sys.stderr)
+                print(f"Error type: {type(e).__name__}", file=sys.stderr)
                 print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
                 break
         
         if last_error:
             print("Database initialization failed. Please check your database configuration.", file=sys.stderr)
-            # Don't raise the error, just log it
-            print(f"Continuing despite error: {str(last_error)}", file=sys.stderr)
+            print(f"Final error: {str(last_error)}", file=sys.stderr)
         return False
 
     # Try to initialize the database
-    try:
-        init_db_with_retry()
-    except Exception as e:
-        print(f"Failed to initialize database: {str(e)}", file=sys.stderr)
-        # We'll continue with the app initialization but database operations will fail
+    print("Starting database initialization...", file=sys.stderr)
+    init_success = init_db_with_retry()
+    print(f"Database initialization {'successful' if init_success else 'failed'}", file=sys.stderr)
     
     # Setup login manager
     login_manager = LoginManager()
@@ -143,7 +153,7 @@ def create_app():
         try:
             return User.query.get(int(id))
         except Exception as e:
-            print(f"Error loading user: {str(e)}", file=sys.stderr)
+            print(f"Error loading user {id}: {str(e)}", file=sys.stderr)
             print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
             return None
     
@@ -158,14 +168,25 @@ def create_app():
     # Error handlers
     @app.errorhandler(500)
     def internal_error(error):
-        db.session.rollback()
-        print(f"500 error: {str(error)}", file=sys.stderr)
+        print(f"500 error occurred: {str(error)}", file=sys.stderr)
+        print(f"Error type: {type(error).__name__}", file=sys.stderr)
         print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
+        
+        try:
+            db.session.rollback()
+        except Exception as e:
+            print(f"Error during session rollback: {str(e)}", file=sys.stderr)
+        
         try:
             user = current_user if current_user.is_authenticated else None
-        except:
+        except Exception as e:
+            print(f"Error getting current user: {str(e)}", file=sys.stderr)
             user = None
-        return render_template('error.html', error=error, user=user), 500
+            
+        return render_template('error.html', 
+                             error=error,
+                             error_type=type(error).__name__,
+                             user=user), 500
     
     @app.errorhandler(404)
     def not_found_error(error):
