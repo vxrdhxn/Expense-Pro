@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from datetime import datetime
@@ -6,6 +6,7 @@ import os
 import sys
 from dotenv import load_dotenv
 from sqlalchemy.pool import NullPool
+import time
 
 load_dotenv()
 
@@ -32,12 +33,26 @@ def create_app():
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
             'poolclass': NullPool,
             'connect_args': {
-                'connect_timeout': 10
+                'connect_timeout': 30,
+                'keepalives': 1,
+                'keepalives_idle': 30,
+                'keepalives_interval': 10,
+                'keepalives_count': 5
             }
         }
         
         # Initialize extensions
         db.init_app(app)
+        
+        # Add health check route
+        @app.route('/health')
+        def health_check():
+            try:
+                # Test database connection
+                db.session.execute('SELECT 1')
+                return jsonify({'status': 'healthy', 'database': 'connected'})
+            except Exception as e:
+                return jsonify({'status': 'unhealthy', 'database': str(e)}), 500
         
         # Register blueprints
         from .views import views
@@ -48,14 +63,23 @@ def create_app():
         
         from .models import User, Expense
         
-        # Create database tables
-        with app.app_context():
+        # Create database tables with retry logic
+        max_retries = 3
+        retry_delay = 2  # seconds
+        
+        for attempt in range(max_retries):
             try:
-                db.create_all()
-                print('Database tables created successfully!')
+                with app.app_context():
+                    db.create_all()
+                    print('Database tables created successfully!')
+                break
             except Exception as e:
-                print(f"Error creating tables: {str(e)}", file=sys.stderr)
-                # Don't raise the error, try to continue
+                print(f"Error creating tables (attempt {attempt + 1}/{max_retries}): {str(e)}", file=sys.stderr)
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    print("Failed to create tables after all retries", file=sys.stderr)
         
         # Setup login manager
         login_manager = LoginManager()
@@ -73,6 +97,12 @@ def create_app():
         @app.context_processor
         def inject_now():
             return {'now': datetime.utcnow()}
+        
+        # Error handlers
+        @app.errorhandler(500)
+        def internal_error(error):
+            db.session.rollback()
+            return jsonify({'error': 'Internal Server Error', 'details': str(error)}), 500
             
         return app
         
