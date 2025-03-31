@@ -4,8 +4,11 @@ from flask_login import LoginManager
 from datetime import datetime
 import os
 import sys
+import traceback
 from dotenv import load_dotenv
 from sqlalchemy.pool import NullPool
+from sqlalchemy import create_engine
+from sqlalchemy.exc import SQLAlchemyError
 
 load_dotenv()
 
@@ -38,6 +41,17 @@ def create_app():
         }
     }
     
+    # Test database connection before initializing app
+    try:
+        engine = create_engine(database_url, poolclass=NullPool, connect_args={'connect_timeout': 30})
+        with engine.connect() as connection:
+            connection.execute("SELECT 1")
+        print("Database connection test successful!", file=sys.stderr)
+    except Exception as e:
+        print(f"Database connection test failed: {str(e)}", file=sys.stderr)
+        print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
+        # Continue anyway, as the error might be temporary
+    
     # Initialize extensions
     db.init_app(app)
     
@@ -54,10 +68,21 @@ def create_app():
     # Initialize database
     with app.app_context():
         try:
+            # Test connection again within app context
+            db.session.execute("SELECT 1")
+            db.session.commit()
+            print("Database connection verified within app context!", file=sys.stderr)
+            
+            # Create tables
             db.create_all()
             print("Database tables created successfully!", file=sys.stderr)
+        except SQLAlchemyError as e:
+            print(f"Database initialization error: {str(e)}", file=sys.stderr)
+            print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
+            db.session.rollback()
         except Exception as e:
-            print(f"Error creating database tables: {str(e)}", file=sys.stderr)
+            print(f"Unexpected error during database initialization: {str(e)}", file=sys.stderr)
+            print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
     
     # Setup login manager
     login_manager = LoginManager()
@@ -70,6 +95,7 @@ def create_app():
             return User.query.get(int(id))
         except Exception as e:
             print(f"Error loading user: {str(e)}", file=sys.stderr)
+            print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
             return None
     
     @app.context_processor
@@ -85,6 +111,7 @@ def create_app():
     def internal_error(error):
         db.session.rollback()
         print(f"500 error: {str(error)}", file=sys.stderr)
+        print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
         return render_template('error.html', error=error), 500
     
     @app.errorhandler(404)
