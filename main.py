@@ -1,6 +1,12 @@
 from website import create_app
+import sys
 
-app = create_app()
+try:
+    app = create_app()
+    print("Application created successfully", file=sys.stderr)
+except Exception as e:
+    print(f"Error creating application: {str(e)}", file=sys.stderr)
+    raise
 
 # This is for local development
 if __name__ == '__main__':
