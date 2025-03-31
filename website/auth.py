@@ -7,12 +7,39 @@ import re
 import sys
 import traceback
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
+import time
 
 auth = Blueprint('auth', __name__)
 
 def is_valid_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return re.match(pattern, email) is not None
+
+def try_db_operation(operation, max_retries=3):
+    """Helper function to retry database operations"""
+    retry_delay = 1
+    last_error = None
+    
+    for attempt in range(max_retries):
+        try:
+            result = operation()
+            db.session.commit()
+            return result
+        except OperationalError as e:
+            last_error = e
+            print(f"Database operation attempt {attempt + 1} failed: {str(e)}", file=sys.stderr)
+            db.session.rollback()
+            if attempt < max_retries - 1:
+                print(f"Retrying in {retry_delay} seconds...", file=sys.stderr)
+                time.sleep(retry_delay)
+                retry_delay *= 2
+        except SQLAlchemyError as e:
+            print(f"Database error: {str(e)}", file=sys.stderr)
+            db.session.rollback()
+            raise
+    
+    if last_error:
+        raise last_error
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
@@ -21,7 +48,7 @@ def login():
         password = request.form.get('password')
         
         try:
-            user = User.query.filter_by(email=email).first()
+            user = try_db_operation(lambda: User.query.filter_by(email=email).first())
             if user:
                 if user.verify_password(password):
                     flash('Logged in successfully!', category='success')
@@ -31,6 +58,8 @@ def login():
                     flash('Incorrect password.', category='error')
             else:
                 flash('Email does not exist.', category='error')
+        except OperationalError:
+            flash('Unable to connect to the database. Please try again later.', category='error')
         except Exception as e:
             print(f"Error during login: {str(e)}", file=sys.stderr)
             flash('An error occurred during login. Please try again.', category='error')
@@ -94,7 +123,7 @@ def sign_up():
             try:
                 print("Checking for existing user...", file=sys.stderr)
                 # Check if user already exists
-                existing_user = User.query.filter_by(email=email).first()
+                existing_user = try_db_operation(lambda: User.query.filter_by(email=email).first())
                 if existing_user:
                     print(f"User already exists with email: {email}", file=sys.stderr)
                     flash('Email already exists.', category='error')
@@ -109,10 +138,13 @@ def sign_up():
                 )
                 new_user.password = password  # This will use the password property setter
 
-                # Add to database
+                # Add to database with retry mechanism
+                def add_user():
+                    db.session.add(new_user)
+                    return new_user
+
                 print("Adding user to database...", file=sys.stderr)
-                db.session.add(new_user)
-                db.session.commit()
+                new_user = try_db_operation(add_user)
                 print("User successfully added to database", file=sys.stderr)
                 
                 # Log in the new user
@@ -120,21 +152,17 @@ def sign_up():
                 flash('Account created successfully!', category='success')
                 return redirect(url_for('views.home'))
 
-            except IntegrityError as e:
-                db.session.rollback()
-                print(f"Database integrity error: {str(e)}", file=sys.stderr)
-                flash('This email is already registered.', category='error')
-                return render_template("sign_up.html", user=current_user)
-                
-            except OperationalError as e:
-                db.session.rollback()
-                print(f"Database operational error: {str(e)}", file=sys.stderr)
-                print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
+            except OperationalError:
+                print("Database connection error during user creation", file=sys.stderr)
                 flash('Unable to connect to the database. Please try again later.', category='error')
                 return render_template("sign_up.html", user=current_user)
                 
+            except IntegrityError:
+                print(f"Database integrity error during user creation", file=sys.stderr)
+                flash('This email is already registered.', category='error')
+                return render_template("sign_up.html", user=current_user)
+                
             except SQLAlchemyError as e:
-                db.session.rollback()
                 print(f"Database error: {str(e)}", file=sys.stderr)
                 print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
                 flash('An error occurred while creating your account. Please try again.', category='error')

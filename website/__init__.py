@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from datetime import datetime
@@ -26,19 +26,22 @@ def create_app():
     database_url = os.getenv('DATABASE_URL')
     if not database_url:
         print("No DATABASE_URL environment variable set", file=sys.stderr)
-        database_url = 'sqlite:///database.db'  # Fallback for development
+        raise ValueError("DATABASE_URL environment variable is required")
     
     # Parse and modify database URL for PostgreSQL
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
         
-        # Parse the URL to add SSL mode if not present
+        # Parse the URL
         parsed = urllib.parse.urlparse(database_url)
         query_dict = dict(urllib.parse.parse_qsl(parsed.query))
         
-        # Add SSL mode if not present
-        if 'sslmode' not in query_dict:
-            query_dict['sslmode'] = 'require'
+        # Add required parameters for Supabase
+        query_dict.update({
+            'sslmode': 'require',
+            'connect_timeout': '30',
+            'application_name': 'expense_pro'
+        })
         
         # Reconstruct the URL with updated query parameters
         new_query = urllib.parse.urlencode(query_dict)
@@ -60,12 +63,13 @@ def create_app():
         'poolclass': NullPool,
         'connect_args': {
             'connect_timeout': 30,
+            'application_name': 'expense_pro',
             'keepalives': 1,
             'keepalives_idle': 30,
             'keepalives_interval': 10,
             'keepalives_count': 5,
             'sslmode': 'require'
-        } if database_url.startswith('postgresql://') else {}
+        }
     }
     
     # Initialize extensions
@@ -83,6 +87,7 @@ def create_app():
     
     # Initialize database with retry mechanism
     def init_db_with_retry(max_retries=3, retry_delay=1):
+        last_error = None
         for attempt in range(max_retries):
             try:
                 with app.app_context():
@@ -96,21 +101,31 @@ def create_app():
                     print("Database tables created successfully!", file=sys.stderr)
                     return True
             except OperationalError as e:
+                last_error = e
                 print(f"Database connection attempt {attempt + 1} failed: {str(e)}", file=sys.stderr)
                 if attempt < max_retries - 1:
                     print(f"Retrying in {retry_delay} seconds...", file=sys.stderr)
                     time.sleep(retry_delay)
                     retry_delay *= 2  # Exponential backoff
                 else:
-                    print("Max retries reached. Continuing without database initialization.", file=sys.stderr)
+                    print("Max retries reached.", file=sys.stderr)
             except Exception as e:
+                last_error = e
                 print(f"Unexpected error during database initialization: {str(e)}", file=sys.stderr)
                 print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
                 break
+        
+        if last_error:
+            print("Database initialization failed. Please check your database configuration.", file=sys.stderr)
+            raise last_error
         return False
 
     # Try to initialize the database
-    init_db_with_retry()
+    try:
+        init_db_with_retry()
+    except Exception as e:
+        print(f"Failed to initialize database: {str(e)}", file=sys.stderr)
+        # We'll continue with the app initialization but database operations will fail
     
     # Setup login manager
     login_manager = LoginManager()
