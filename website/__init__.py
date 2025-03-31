@@ -21,6 +21,10 @@ def create_app():
     
     # Basic configuration
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'project123')
+    app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
+    
+    # Ensure upload folder exists
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     
     # Database configuration with detailed logging
     database_url = os.getenv('DATABASE_URL')
@@ -41,10 +45,10 @@ def create_app():
         # Add required parameters for Supabase
         query_dict.update({
             'sslmode': 'require',
-            'connect_timeout': '10',  # Reduced from 30
+            'connect_timeout': '10',
             'application_name': 'expense_pro',
-            'statement_timeout': '10000',  # 10 seconds
-            'idle_in_transaction_session_timeout': '10000'  # 10 seconds
+            'statement_timeout': '30000',  # 30 seconds
+            'idle_in_transaction_session_timeout': '30000'  # 30 seconds
         })
         
         # Reconstruct the URL with updated query parameters
@@ -69,7 +73,7 @@ def create_app():
             'connect_timeout': 10,
             'application_name': 'expense_pro',
             'sslmode': 'require',
-            'options': '-c statement_timeout=10000 -c idle_in_transaction_session_timeout=10000'
+            'options': '-c statement_timeout=30000 -c idle_in_transaction_session_timeout=30000'
         }
     }
     
@@ -79,18 +83,37 @@ def create_app():
     # Health check endpoint
     @app.route('/health')
     def health_check():
+        status = {
+            'status': 'healthy',
+            'checks': {
+                'database': 'unknown',
+                'storage': 'unknown'
+            }
+        }
+        
+        # Check database
         try:
-            # Test database connection
             db.session.execute(text('SELECT 1'))
             db.session.commit()
-            return jsonify({'status': 'healthy', 'database': 'connected'}), 200
+            status['checks']['database'] = 'connected'
         except Exception as e:
-            print(f"Health check failed: {str(e)}", file=sys.stderr)
-            return jsonify({
-                'status': 'unhealthy',
-                'database': 'disconnected',
-                'error': str(e)
-            }), 500
+            print(f"Health check - Database failed: {str(e)}", file=sys.stderr)
+            status['checks']['database'] = 'disconnected'
+            status['status'] = 'unhealthy'
+        
+        # Check storage (upload folder)
+        try:
+            if os.path.exists(app.config['UPLOAD_FOLDER']) and os.access(app.config['UPLOAD_FOLDER'], os.W_OK):
+                status['checks']['storage'] = 'accessible'
+            else:
+                status['checks']['storage'] = 'inaccessible'
+                status['status'] = 'unhealthy'
+        except Exception as e:
+            print(f"Health check - Storage failed: {str(e)}", file=sys.stderr)
+            status['checks']['storage'] = 'error'
+            status['status'] = 'unhealthy'
+        
+        return jsonify(status), 200 if status['status'] == 'healthy' else 500
     
     # Register blueprints
     from .views import views
@@ -103,7 +126,7 @@ def create_app():
     from .models import User, Expense
     
     # Initialize database with retry mechanism
-    def init_db_with_retry(max_retries=3, retry_delay=1):
+    def init_db_with_retry(max_retries=5, retry_delay=1):  # Increased retries
         last_error = None
         for attempt in range(max_retries):
             try:
