@@ -59,6 +59,15 @@ class Expense(db.Model):
     description = db.Column(db.String(200), nullable=False)
     date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    @property
+    def formatted_date(self):
+        return self.date.strftime('%Y-%m-%d')
+
+    @property
+    def formatted_amount(self):
+        return "{:.2f}".format(self.amount)
 
     def to_dict(self):
         return {

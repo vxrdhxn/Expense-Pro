@@ -10,9 +10,59 @@ from werkzeug.security import check_password_hash
 views = Blueprint('views', __name__)
 
 @views.route('/')
+def index():
+    if current_user.is_authenticated:
+        today = datetime.now().strftime('%Y-%m-%d')
+        return render_template('home.html', user=current_user, today_date=today)
+    return render_template('landing.html')
+
+@views.route('/home')
 @login_required
 def home():
-    return render_template("home.html", user=current_user)
+    today = datetime.now().strftime('%Y-%m-%d')
+    return render_template('home.html', user=current_user, today_date=today)
+
+@views.route('/add-expense', methods=['POST'])
+@login_required
+def add_expense():
+    try:
+        amount = float(request.form.get('amount'))
+        category = request.form.get('category')
+        description = request.form.get('description')
+        date_str = request.form.get('date')
+        
+        if not all([amount, category, description, date_str]):
+            flash('Please fill in all fields.', category='error')
+            return redirect(url_for('views.home'))
+        
+        if amount <= 0:
+            flash('Amount must be greater than 0.', category='error')
+            return redirect(url_for('views.home'))
+            
+        date = datetime.strptime(date_str, '%Y-%m-%d')
+        
+        new_expense = Expense(
+            amount=amount,
+            category=category,
+            description=description,
+            date=date,
+            user_id=current_user.id
+        )
+        
+        db.session.add(new_expense)
+        db.session.commit()
+        
+        flash('Expense added successfully!', category='success')
+        return redirect(url_for('views.home'))
+        
+    except ValueError:
+        flash('Invalid amount format.', category='error')
+    except Exception as e:
+        print(f"Error adding expense: {str(e)}")
+        flash('An error occurred while adding the expense.', category='error')
+        db.session.rollback()
+    
+    return redirect(url_for('views.home'))
 
 @views.route('/quick_access', methods=['GET', 'POST'])
 @login_required

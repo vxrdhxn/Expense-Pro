@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Welcome{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-6">
+    <!-- Hero Section -->
+    <div class="text-center py-24">
+        <h1 class="text-7xl font-semibold tracking-tight mb-6">
+            Track expenses.<br>
+            <span class="bg-gradient-to-r from-accent-color to-blue-400 bg-clip-text text-transparent">
+                Like never before.
+            </span>
+        </h1>
+        <p class="text-2xl text-gray-400 mb-12 max-w-3xl mx-auto">
+            ExpensePro helps you take control of your finances with beautiful visualizations and powerful insights.
+        </p>
+        <div class="flex items-center justify-center space-x-6">
+            <a href="{{ url_for('auth.sign_up') }}" class="button-primary text-lg px-8 py-4">
+                Get Started
+            </a>
+            <a href="{{ url_for('auth.login') }}" class="text-lg text-gray-400 hover:text-white transition-colors">
+                Sign In →
+            </a>
+        </div>
+    </div>
+
+    <!-- Features Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 py-24">
+        <div class="card p-8">
+            <div class="text-4xl mb-6">📊</div>
+            <h3 class="text-2xl font-semibold mb-4">Beautiful Analytics</h3>
+            <p class="text-gray-400">
+                Visualize your spending patterns with interactive charts and insightful breakdowns.
+            </p>
+        </div>
+        <div class="card p-8">
+            <div class="text-4xl mb-6">⚡️</div>
+            <h3 class="text-2xl font-semibold mb-4">Quick Access</h3>
+            <p class="text-gray-400">
+                Add expenses in seconds with our streamlined interface and smart categorization.
+            </p>
+        </div>
+        <div class="card p-8">
+            <div class="text-4xl mb-6">🔄</div>
+            <h3 class="text-2xl font-semibold mb-4">Currency Conversion</h3>
+            <p class="text-gray-400">
+                Track expenses in multiple currencies with automatic conversion to your preferred currency.
+            </p>
+        </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="text-center py-24">
+        <h2 class="text-4xl font-semibold tracking-tight mb-6">
+            Ready to take control of your finances?
+        </h2>
+        <p class="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
+            Join thousands of users who are already managing their expenses smarter with ExpensePro.
+        </p>
+        <div class="flex items-center justify-center space-x-6">
+            <a href="{{ url_for('auth.sign_up') }}" class="button-primary text-lg px-8 py-4">
+                Create Free Account
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %} 
