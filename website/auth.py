@@ -5,6 +5,7 @@ from .models import User
 from . import db
 import re
 import sys
+import traceback
 
 auth = Blueprint('auth', __name__)
 
@@ -35,14 +36,19 @@ def login():
 def sign_up():
     try:
         if request.method == 'POST':
+            print("Processing sign-up POST request", file=sys.stderr)
+            
             # Get form data
+            form_data = request.form.to_dict()
+            print(f"Raw form data: {form_data}", file=sys.stderr)
+            
             email = request.form.get('email')
             first_name = request.form.get('first-name')
             last_name = request.form.get('last-name')
             password = request.form.get('password')
             terms = request.form.get('terms')
 
-            print(f"Form data received - Email: {email}, First Name: {first_name}, Last Name: {last_name}, Terms: {terms}", file=sys.stderr)
+            print(f"Processed form data - Email: {email}, First Name: {first_name}, Last Name: {last_name}, Terms: {terms}", file=sys.stderr)
 
             # Input validation
             if not all([email, first_name, last_name, password]):
@@ -51,36 +57,45 @@ def sign_up():
                 if not first_name: missing_fields.append("first name")
                 if not last_name: missing_fields.append("last name")
                 if not password: missing_fields.append("password")
+                print(f"Missing fields: {missing_fields}", file=sys.stderr)
                 flash(f'Missing required fields: {", ".join(missing_fields)}', category='error')
                 return render_template("sign_up.html", user=current_user)
 
             if not terms:
+                print("Terms not accepted", file=sys.stderr)
                 flash('Please accept the Terms & Conditions.', category='error')
                 return render_template("sign_up.html", user=current_user)
 
             if not is_valid_email(email):
+                print(f"Invalid email format: {email}", file=sys.stderr)
                 flash('Please enter a valid email address.', category='error')
                 return render_template("sign_up.html", user=current_user)
 
             if len(first_name) < 2:
+                print(f"First name too short: {first_name}", file=sys.stderr)
                 flash('First name must be greater than 1 character.', category='error')
                 return render_template("sign_up.html", user=current_user)
 
             if len(last_name) < 2:
+                print(f"Last name too short: {last_name}", file=sys.stderr)
                 flash('Last name must be greater than 1 character.', category='error')
                 return render_template("sign_up.html", user=current_user)
 
             if len(password) < 7:
+                print("Password too short", file=sys.stderr)
                 flash('Password must be at least 7 characters.', category='error')
                 return render_template("sign_up.html", user=current_user)
 
             try:
+                print("Checking for existing user...", file=sys.stderr)
                 # Check if user already exists
                 existing_user = User.query.filter_by(email=email).first()
                 if existing_user:
+                    print(f"User already exists with email: {email}", file=sys.stderr)
                     flash('Email already exists.', category='error')
                     return render_template("sign_up.html", user=current_user)
 
+                print("Creating new user...", file=sys.stderr)
                 # Create new user
                 new_user = User(
                     email=email,
@@ -90,8 +105,10 @@ def sign_up():
                 new_user.password = password  # This will use the password property setter
 
                 # Add to database
+                print("Adding user to database...", file=sys.stderr)
                 db.session.add(new_user)
                 db.session.commit()
+                print("User successfully added to database", file=sys.stderr)
                 
                 # Log in the new user
                 login_user(new_user, remember=True)
@@ -101,12 +118,15 @@ def sign_up():
             except Exception as e:
                 db.session.rollback()
                 print(f"Database error during user creation: {str(e)}", file=sys.stderr)
+                print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
                 flash('An error occurred while creating your account. Please try again.', category='error')
                 return render_template("sign_up.html", user=current_user)
 
     except Exception as e:
         print(f"Unexpected error in sign_up route: {str(e)}", file=sys.stderr)
-        return jsonify({'error': 'Internal Server Error', 'details': str(e)}), 500
+        print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
+        flash('An unexpected error occurred. Please try again.', category='error')
+        return render_template("sign_up.html", user=current_user)
 
     return render_template("sign_up.html", user=current_user)
 
