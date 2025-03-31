@@ -21,24 +21,33 @@ SUPPORTED_CURRENCIES = {
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(150), unique=True)
-    password_hash = db.Column(db.String(150))
-    first_name = db.Column(db.String(150))
-    last_name = db.Column(db.String(150))
-    currency = db.Column(db.String(3), default='USD')
-    email_notifications = db.Column(db.Boolean, default=False)
-    monthly_report = db.Column(db.Boolean, default=False)
-    default_view = db.Column(db.String(10), default='monthly')
-    expenses = db.relationship('Expense', backref='user', lazy=True)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    password_hash = db.Column(db.String(150), nullable=False)
+    first_name = db.Column(db.String(150), nullable=False)
+    last_name = db.Column(db.String(150), nullable=False)
+    currency = db.Column(db.String(3), default='USD', nullable=False)
+    email_notifications = db.Column(db.Boolean, default=False, nullable=False)
+    monthly_report = db.Column(db.Boolean, default=False, nullable=False)
+    default_view = db.Column(db.String(10), default='monthly', nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    expenses = db.relationship('Expense', backref='user', lazy=True, cascade='all, delete-orphan')
 
-    def set_password(self, password):
+    @property
+    def password(self):
+        raise AttributeError('password is not a readable attribute')
+
+    @password.setter
+    def password(self, password):
         self.password_hash = generate_password_hash(password)
 
-    def check_password(self, password):
+    def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
 
     def get_currency_symbol(self):
         return SUPPORTED_CURRENCIES.get(self.currency, '$')
+
+    def __repr__(self):
+        return f'<User {self.email}>'
 
 class Expense(db.Model):
     __tablename__ = 'expenses'
