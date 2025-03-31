@@ -394,3 +394,11 @@ def delete_account():
             flash('An error occurred while deleting your account.', category='error')
             
     return redirect(url_for('views.settings'))
+
+@views.route('/test-db')
+def test_db():
+    try:
+        db.session.execute('SELECT 1')
+        return 'Database connection successful!'
+    except Exception as e:
+        return f'Database connection failed: {str(e)}'

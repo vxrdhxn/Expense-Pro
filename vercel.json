@@ -2,18 +2,21 @@
     "version": 2,
     "builds": [
         {
-            "src": "main.py",
-            "use": "@vercel/python"
+            "src": "vercel_app.py",
+            "use": "@vercel/python",
+            "config": {
+                "maxLambdaSize": "15mb"
+            }
         }
     ],
     "routes": [
         {
+            "src": "/static/(.*)",
+            "dest": "/static/$1"
+        },
+        {
             "src": "/(.*)",
-            "dest": "main.py"
+            "dest": "vercel_app.py"
         }
-    ],
-    "env": {
-        "DATABASE_URL": "@database_url",
-        "SECRET_KEY": "@secret_key"
-    }
+    ]
 } 
