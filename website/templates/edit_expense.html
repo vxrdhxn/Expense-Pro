@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Edit Expense{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-8 text-blue-400">Edit Expense</h1>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-500{% else %}bg-green-500{% endif %} text-white">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Edit Form -->
+    <div class="bg-gray-800 rounded-lg p-6 shadow-lg">
+        <form method="POST" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Amount</label>
+                    <div class="flex">
+                        <select name="currency" class="w-24 p-2 rounded-l bg-gray-700 border border-gray-600 focus:border-blue-400 focus:outline-none">
+                            {% for code, symbol in supported_currencies.items() %}
+                                <option value="{{ code }}" {% if code == expense.original_currency %}selected{% endif %}>
+                                    {{ code }} ({{ symbol }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <input type="number" name="amount" step="0.01" required
+                            class="flex-1 p-2 rounded-r bg-gray-700 border border-gray-600 focus:border-blue-400 focus:outline-none"
+                            value="{{ "%.2f"|format(expense.original_amount) }}">
+                    </div>
+                    {% if expense.original_currency != user.currency %}
+                        <p class="text-sm text-gray-400 mt-2">
+                            Will be converted to {{ user.currency }} based on current exchange rates
+                        </p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Category</label>
+                    <select name="category" required
+                        class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-400 focus:outline-none">
+                        <option value="food" {% if expense.category == 'food' %}selected{% endif %}>Food</option>
+                        <option value="transportation" {% if expense.category == 'transportation' %}selected{% endif %}>Transportation</option>
+                        <option value="utilities" {% if expense.category == 'utilities' %}selected{% endif %}>Utilities</option>
+                        <option value="entertainment" {% if expense.category == 'entertainment' %}selected{% endif %}>Entertainment</option>
+                        <option value="other" {% if expense.category == 'other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium mb-2">Description</label>
+                    <input type="text" name="description" required
+                        class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-400 focus:outline-none"
+                        value="{{ expense.description }}">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-4">
+                <a href="{{ url_for('views.expenses') }}"
+                    class="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 transition duration-150">
+                    Cancel
+                </a>
+                <button type="submit"
+                    class="px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 text-white transition duration-150">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

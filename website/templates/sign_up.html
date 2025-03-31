@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Sign Up{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto px-6">
+    <!-- Hero Section -->
+    <div class="text-center mb-12">
+        <h1 class="text-5xl font-semibold tracking-tight mb-4">Create Account</h1>
+        <p class="text-xl text-gray-400">Start managing your expenses today</p>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="mb-8 animate-fade-in">
+                    <div class="px-6 py-4 {% if category == 'error' %}bg-red-500/10 text-red-500{% else %}bg-green-500/10 text-green-500{% endif %} rounded-2xl backdrop-blur-xl">
+                        {{ message }}
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Sign Up Form -->
+    <form method="POST" class="card p-8 space-y-6">
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium mb-2 text-gray-400" for="firstName">First Name</label>
+                <input type="text" id="firstName" name="firstName" required
+                    class="input-field w-full"
+                    placeholder="Enter first name">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2 text-gray-400" for="lastName">Last Name</label>
+                <input type="text" id="lastName" name="lastName" required
+                    class="input-field w-full"
+                    placeholder="Enter last name">
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium mb-2 text-gray-400" for="email">Email</label>
+            <input type="email" id="email" name="email" required
+                class="input-field w-full"
+                placeholder="Enter your email">
+        </div>
+        <div>
+            <label class="block text-sm font-medium mb-2 text-gray-400" for="password1">Password</label>
+            <input type="password" id="password1" name="password1" required
+                class="input-field w-full"
+                placeholder="Create a password">
+        </div>
+        <div>
+            <label class="block text-sm font-medium mb-2 text-gray-400" for="password2">Confirm Password</label>
+            <input type="password" id="password2" name="password2" required
+                class="input-field w-full"
+                placeholder="Confirm your password">
+        </div>
+        <button type="submit" class="button-primary w-full">
+            Create Account
+        </button>
+        <p class="text-center text-sm text-gray-400">
+            Already have an account? 
+            <a href="{{ url_for('auth.login') }}" class="text-accent-color hover:underline">
+                Sign in here
+            </a>
+        </p>
+    </form>
+</div>
+{% endblock %}

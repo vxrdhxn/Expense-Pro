@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Monthly Report{% endblock %}
+
+{% block content %}
+<style>
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+    .progress-container {
+        width: 100%;
+        background-color: var(--border);
+        border-radius: 9999px;
+        height: 0.625rem;
+        transition: background-color 0.3s;
+    }
+    .progress-fill {
+        height: 100%;
+        border-radius: 9999px;
+        background-color: rgb(0, 102, 204);
+        transition: width 0.3s ease;
+    }
+    .stat-card {
+        background-color: var(--bg-secondary);
+        border-radius: 1rem;
+        backdrop-filter: blur(1rem);
+        transition: all 0.3s ease;
+        box-shadow: var(--card-shadow);
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--hover-shadow);
+    }
+</style>
+
+<div class="max-w-7xl mx-auto px-8">
+    <!-- Hero Section -->
+    <div class="mb-12 animate-fade-in">
+        <h1 class="text-4xl font-bold mb-2">Monthly Report</h1>
+        <p class="text-base text-gray-400">Track and analyze your monthly spending patterns</p>
+    </div>
+
+    <!-- Month Selection -->
+    <div class="mb-8 animate-fade-in" style="animation-delay: 0.1s;">
+        <form method="GET" class="flex items-center space-x-4">
+            <label class="text-sm font-medium text-gray-400">Select Month:</label>
+            <select name="month" class="input-field min-w-[200px]" onchange="this.form.submit()">
+                {% for month in months %}
+                    <option value="{{ month.strftime('%Y-%m') }}" {% if month.strftime('%Y-%m') == selected_month.strftime('%Y-%m') %}selected{% endif %}>
+                        {{ month.strftime('%B %Y') }}
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="stat-card p-6 animate-fade-in" style="animation-delay: 0.2s;">
+            <h3 class="text-sm font-medium mb-2 text-gray-400">Total Expenses</h3>
+            <p class="text-3xl font-bold text-blue-500">{{ user.get_currency_symbol() }}{{ "%.2f"|format(total_expenses) }}</p>
+        </div>
+        <div class="stat-card p-6 animate-fade-in" style="animation-delay: 0.3s;">
+            <h3 class="text-sm font-medium mb-2 text-gray-400">Average Daily</h3>
+            <p class="text-3xl font-bold text-green-500">{{ user.get_currency_symbol() }}{{ "%.2f"|format(average_daily) }}</p>
+        </div>
+        <div class="stat-card p-6 animate-fade-in" style="animation-delay: 0.4s;">
+            <h3 class="text-sm font-medium mb-2 text-gray-400">Highest Category</h3>
+            <p class="text-3xl font-bold text-purple-500">{{ highest_category.title() if highest_category else 'N/A' }}</p>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <!-- Category Breakdown Chart -->
+        <div class="stat-card p-6 animate-fade-in" style="animation-delay: 0.5s;">
+            <h3 class="text-base font-medium mb-4">Category Breakdown</h3>
+            <div class="chart-container">
+                <canvas id="categoryChart" 
+                    data-labels='{{ category_totals.keys()|list|tojson|safe }}' 
+                    data-values='{{ category_totals.values()|list|tojson|safe }}'></canvas>
+            </div>
+        </div>
+
+        <!-- Daily Expenses Chart -->
+        <div class="stat-card p-6 animate-fade-in" style="animation-delay: 0.6s;">
+            <h3 class="text-base font-medium mb-4">Daily Expenses</h3>
+            <div class="chart-container">
+                <canvas id="dailyChart" data-expenses='{{ daily_expenses|tojson|safe }}'></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Details -->
+    <div class="stat-card p-6 mb-8 animate-fade-in" style="animation-delay: 0.7s;">
+        <h3 class="text-base font-medium mb-6">Category Details</h3>
+        <div class="space-y-6">
+            {% for category, amount in category_totals.items() %}
+            <div>
+                <div class="flex justify-between mb-2">
+                    <span class="font-medium">{{ category.title() }}</span>
+                    <span class="text-blue-500">{{ user.get_currency_symbol() }}{{ "%.2f"|format(amount) }}</span>
+                </div>
+                {% set percentage = (amount / total_expenses * 100)|round if total_expenses > 0 else 0 %}
+                <div class="progress-container">
+                    <div class="progress-fill" style="width: {{ percentage }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Pass currency symbol as a global variable -->
+<script>
+    window.CURRENCY_SYMBOL = "{{ user.get_currency_symbol() }}";
+</script>
+
+<!-- Scripts -->
+<script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-6">
+    <!-- Hero Section -->
+    <div class="text-center mb-12">
+        <h1 class="text-5xl font-semibold tracking-tight mb-4">Settings</h1>
+        <p class="text-xl text-gray-400">Customize your ExpensePro experience</p>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="mb-8 animate-fade-in">
+                    <div class="px-6 py-4 {% if category == 'error' %}bg-red-500/10 text-red-500{% else %}bg-green-500/10 text-green-500{% endif %} rounded-2xl backdrop-blur-xl">
+                        {{ message }}
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Settings Sections -->
+    <div class="space-y-8">
+        <!-- Profile Settings -->
+        <div class="card p-8">
+            <h2 class="text-2xl font-semibold mb-6">Profile Settings</h2>
+            <form method="POST" action="{{ url_for('views.update_profile') }}" class="space-y-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2 text-gray-400" for="firstName">First Name</label>
+                        <input type="text" id="firstName" name="firstName" required
+                            class="input-field w-full"
+                            value="{{ user.first_name }}"
+                            placeholder="Enter first name">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2 text-gray-400" for="lastName">Last Name</label>
+                        <input type="text" id="lastName" name="lastName" required
+                            class="input-field w-full"
+                            value="{{ user.last_name }}"
+                            placeholder="Enter last name">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-gray-400" for="email">Email</label>
+                    <input type="email" id="email" name="email" required
+                        class="input-field w-full"
+                        value="{{ user.email }}"
+                        placeholder="Enter your email">
+                </div>
+                <button type="submit" class="button-primary">
+                    Update Profile
+                </button>
+            </form>
+        </div>
+
+        <!-- Currency Settings -->
+        <div class="card p-8">
+            <h2 class="text-2xl font-semibold mb-6">Currency Settings</h2>
+            <form method="POST" action="{{ url_for('views.update_currency') }}" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-gray-400" for="currency">Preferred Currency</label>
+                    <select id="currency" name="currency" required class="input-field w-full">
+                        <option value="USD" {% if user.currency == 'USD' %}selected{% endif %}>USD - US Dollar</option>
+                        <option value="EUR" {% if user.currency == 'EUR' %}selected{% endif %}>EUR - Euro</option>
+                        <option value="GBP" {% if user.currency == 'GBP' %}selected{% endif %}>GBP - British Pound</option>
+                        <option value="JPY" {% if user.currency == 'JPY' %}selected{% endif %}>JPY - Japanese Yen</option>
+                        <option value="AUD" {% if user.currency == 'AUD' %}selected{% endif %}>AUD - Australian Dollar</option>
+                        <option value="CAD" {% if user.currency == 'CAD' %}selected{% endif %}>CAD - Canadian Dollar</option>
+                        <option value="CHF" {% if user.currency == 'CHF' %}selected{% endif %}>CHF - Swiss Franc</option>
+                        <option value="CNY" {% if user.currency == 'CNY' %}selected{% endif %}>CNY - Chinese Yuan</option>
+                        <option value="INR" {% if user.currency == 'INR' %}selected{% endif %}>INR - Indian Rupee</option>
+                    </select>
+                </div>
+                <button type="submit" class="button-primary">
+                    Update Currency
+                </button>
+            </form>
+        </div>
+
+        <!-- Password Change -->
+        <div class="card p-8">
+            <h2 class="text-2xl font-semibold mb-6">Change Password</h2>
+            <form method="POST" action="{{ url_for('views.change_password') }}" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-gray-400" for="currentPassword">Current Password</label>
+                    <input type="password" id="currentPassword" name="currentPassword" required
+                        class="input-field w-full"
+                        placeholder="Enter current password">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-gray-400" for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" name="newPassword" required
+                        class="input-field w-full"
+                        placeholder="Enter new password">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-gray-400" for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required
+                        class="input-field w-full"
+                        placeholder="Confirm new password">
+                </div>
+                <button type="submit" class="button-primary">
+                    Change Password
+                </button>
+            </form>
+        </div>
+
+        <!-- Delete Account -->
+        <div class="card p-8 border border-red-500/20">
+            <h2 class="text-2xl font-semibold mb-6 text-red-500">Delete Account</h2>
+            <p class="text-gray-400 mb-6">
+                Warning: This action cannot be undone. All your data will be permanently deleted.
+            </p>
+            <form method="POST" action="{{ url_for('views.delete_account') }}" class="space-y-6"
+                onsubmit="return confirm('Are you sure you want to delete your account? This action cannot be undone.')">
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-gray-400" for="confirmDelete">Type "DELETE" to confirm</label>
+                    <input type="text" id="confirmDelete" name="confirmDelete" required
+                        class="input-field w-full"
+                        pattern="DELETE"
+                        placeholder='Type "DELETE" to confirm'>
+                </div>
+                <button type="submit" class="px-6 py-2 bg-red-500/10 text-red-500 rounded-full hover:bg-red-500/20 transition-colors">
+                    Delete Account
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

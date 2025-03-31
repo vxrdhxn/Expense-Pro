@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto px-6">
+    <!-- Hero Section -->
+    <div class="text-center mb-12">
+        <h1 class="text-5xl font-semibold tracking-tight mb-4">Welcome Back</h1>
+        <p class="text-xl text-gray-400">Sign in to manage your expenses</p>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="mb-8 animate-fade-in">
+                    <div class="px-6 py-4 {% if category == 'error' %}bg-red-500/10 text-red-500{% else %}bg-green-500/10 text-green-500{% endif %} rounded-2xl backdrop-blur-xl">
+                        {{ message }}
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Login Form -->
+    <form method="POST" class="card p-8 space-y-6">
+        <div>
+            <label class="block text-sm font-medium mb-2 text-gray-400" for="email">Email</label>
+            <input type="email" id="email" name="email" required
+                class="input-field w-full"
+                placeholder="Enter your email">
+        </div>
+        <div>
+            <label class="block text-sm font-medium mb-2 text-gray-400" for="password">Password</label>
+            <input type="password" id="password" name="password" required
+                class="input-field w-full"
+                placeholder="Enter your password">
+        </div>
+        <button type="submit" class="button-primary w-full">
+            Sign In
+        </button>
+        <p class="text-center text-sm text-gray-400">
+            Don't have an account? 
+            <a href="{{ url_for('auth.sign_up') }}" class="text-accent-color hover:underline">
+                Sign up here
+            </a>
+        </p>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - ExpensePro</title>
+    
+    <!-- Inter Font -->
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter var', 'sans-serif'],
+                    },
+                    colors: {
+                        'accent-color': '#0066CC',
+                    },
+                },
+            },
+        }
+    </script>
+    
+    <!-- Custom Styles -->
+    <style>
+        /* Theme Variables */
+        :root[class='dark'] {
+            --bg-primary: #000000;
+            --bg-secondary: rgba(31, 31, 31, 0.7);
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --border: #27272a;
+            --card-shadow: none;
+            --hover-shadow: none;
+        }
+
+        :root[class='light'] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --text-primary: #374151;
+            --text-secondary: #6b7280;
+            --border: #e2e8f0;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Base Styles */
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            font-family: 'Inter var', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            background-image: radial-gradient(circle at 50% 0%, var(--accent-gradient-dark), transparent 50%);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Light theme styles */
+        html.light body {
+            background-color: var(--bg-primary-light);
+            color: var(--text-primary-light);
+            background-image: radial-gradient(circle at 50% 0%, var(--accent-gradient-light), transparent 50%);
+        }
+
+        /* Card Styles */
+        .card, .input-field, .stat-card {
+            background-color: var(--bg-secondary);
+            border-radius: 1rem;
+            backdrop-filter: blur(1rem);
+            transition: all 0.3s ease;
+            box-shadow: var(--card-shadow);
+        }
+
+        .card:hover, .stat-card:hover {
+            box-shadow: var(--hover-shadow);
+            transform: translateY(-1px);
+        }
+
+        .input-field {
+            padding: 0.75rem 1rem;
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.2s ease;
+            background-color: var(--bg-secondary);
+        }
+
+        .input-field:focus {
+            background-color: var(--bg-secondary);
+            box-shadow: var(--hover-shadow);
+        }
+
+        /* Navigation Styles */
+        nav {
+            background-color: var(--bg-secondary);
+            backdrop-filter: blur(1rem);
+            box-shadow: var(--card-shadow);
+            border-color: var(--border);
+            transition: all 0.3s ease;
+        }
+
+        /* Footer Styles */
+        footer {
+            background-color: var(--bg-secondary);
+            backdrop-filter: blur(1rem);
+            box-shadow: var(--card-shadow);
+            border-color: var(--border);
+            transition: all 0.3s ease;
+        }
+
+        /* Input Styles */
+        .input-field::placeholder {
+            color: var(--text-secondary-dark);
+        }
+
+        html.light .input-field::placeholder {
+            color: var(--text-secondary-light);
+        }
+
+        /* Navigation Bar and Footer Base Styles */
+        nav, footer {
+            background-color: var(--bg-secondary);
+            backdrop-filter: blur(1rem);
+            box-shadow: var(--card-shadow);
+            border-color: var(--border);
+            transition: all 0.3s ease;
+        }
+
+        html.light nav, html.light footer {
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Select Field Styles */
+        select.input-field {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+
+        /* Button Styles Update */
+        .button-primary {
+            padding: 0.5rem 1.5rem;
+            background-color: var(--bg-secondary);
+            color: rgb(0, 102, 204);
+            border-radius: 9999px;
+            transition: all 0.2s;
+            box-shadow: var(--card-shadow);
+        }
+
+        .button-primary:hover {
+            box-shadow: var(--hover-shadow);
+            transform: translateY(-1px);
+        }
+
+        .button-primary:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.25);
+        }
+
+        /* Navigation Styles */
+        .nav-link {
+            padding: 0.625rem 1.25rem;
+            color: var(--text-secondary);
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        html.light .nav-link {
+            color: var(--text-secondary-light);
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background-color: var(--border);
+        }
+
+        html.light .nav-link:hover {
+            color: var(--text-primary-light);
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .nav-link.active {
+            color: var(--text-primary);
+            background-color: var(--border);
+        }
+
+        html.light .nav-link.active {
+            color: var(--text-primary-light);
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            padding: 0.5rem;
+            border-radius: 9999px;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background-color: var(--border);
+        }
+
+        html.light .theme-toggle:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        /* Animation */
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Logo and Text Colors */
+        .logo-text {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        html.light .logo-text {
+            color: var(--text-primary-light);
+        }
+
+        /* Footer Links */
+        .footer-link {
+            color: var(--text-secondary);
+            transition: color 0.2s;
+        }
+
+        html.light .footer-link {
+            color: var(--text-secondary-light);
+        }
+
+        .footer-link:hover {
+            color: var(--text-primary);
+        }
+
+        html.light .footer-link:hover {
+            color: var(--text-primary-light);
+        }
+
+        /* Progress Bar Styles */
+        .progress-container {
+            background-color: var(--border);
+        }
+
+        .progress-fill {
+            background-color: rgb(0, 102, 204);
+        }
+    </style>
+
+    <!-- Theme Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get the saved theme from localStorage or default to dark
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.className = savedTheme;
+
+            // Function to toggle theme
+            function toggleTheme() {
+                const html = document.documentElement;
+                const newTheme = html.className === 'light' ? 'dark' : 'light';
+                html.className = newTheme;
+                localStorage.setItem('theme', newTheme);
+                
+                // Update the icon
+                updateThemeIcon();
+            }
+
+            // Function to update theme icon
+            function updateThemeIcon() {
+                const isDark = document.documentElement.className === 'dark';
+                const moonIcon = document.getElementById('moon-icon');
+                const sunIcon = document.getElementById('sun-icon');
+                
+                if (isDark) {
+                    moonIcon.style.display = 'none';
+                    sunIcon.style.display = 'block';
+            } else {
+                    moonIcon.style.display = 'block';
+                    sunIcon.style.display = 'none';
+                }
+            }
+
+            // Add click event to theme toggle button
+            document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+
+            // Set initial icon state
+            updateThemeIcon();
+        });
+    </script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 border-b">
+        <div class="max-w-7xl mx-auto px-8">
+            <div class="flex items-center justify-between h-20">
+                <!-- Logo -->
+                <a href="/" class="logo-text text-xl tracking-tight flex items-center space-x-2">
+                    <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>ExpensePro</span>
+                </a>
+
+                <!-- Navigation Links -->
+                <div class="flex items-center space-x-4">
+                    {% if user.is_authenticated %}
+                        <a href="{{ url_for('views.home') }}" class="nav-link {% if request.endpoint == 'views.home' %}active{% endif %}">
+                            Home
+                        </a>
+                        <a href="{{ url_for('views.quick_access') }}" class="nav-link {% if request.endpoint == 'views.quick_access' %}active{% endif %}">
+                            Quick Access
+                        </a>
+                        <a href="{{ url_for('views.expenses') }}" class="nav-link {% if request.endpoint == 'views.expenses' %}active{% endif %}">
+                            Expenses
+                        </a>
+                        <a href="{{ url_for('views.monthly_report') }}" class="nav-link {% if request.endpoint == 'views.monthly_report' %}active{% endif %}">
+                            Monthly Report
+                        </a>
+                        <a href="{{ url_for('views.settings') }}" class="nav-link {% if request.endpoint == 'views.settings' %}active{% endif %}">
+                            Settings
+                        </a>
+                        <!-- Theme Toggle Button -->
+                        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                            <!-- Moon icon for light mode -->
+                            <svg id="moon-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                            </svg>
+                            <!-- Sun icon for dark mode -->
+                            <svg id="sun-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                        </button>
+                        <div class="w-px h-6 bg-white/10 mx-2"></div>
+                        <a href="{{ url_for('auth.logout') }}" class="nav-link">
+                            Logout
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('auth.login') }}" class="nav-link {% if request.endpoint == 'auth.login' %}active{% endif %}">
+                            Login
+                        </a>
+                        <a href="{{ url_for('auth.sign_up') }}" class="button-primary">
+                            Sign Up
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="min-h-[calc(100vh-8rem)] py-12">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="h-20 border-t">
+        <div class="max-w-7xl mx-auto px-8 h-full flex items-center justify-between">
+            <p class="footer-link">&copy; {{ now.year }} ExpensePro. All rights reserved.</p>
+            <div class="flex items-center space-x-6">
+                <a href="#" class="footer-link">Privacy Policy</a>
+                <a href="#" class="footer-link">Terms of Service</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
