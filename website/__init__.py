@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from sqlalchemy.pool import NullPool
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
+import urllib.parse
 
 load_dotenv()
 
@@ -25,9 +26,29 @@ def create_app():
     if not database_url:
         print("No DATABASE_URL environment variable set", file=sys.stderr)
         database_url = 'sqlite:///database.db'  # Fallback for development
-        
+    
+    # Parse and modify database URL for PostgreSQL
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
+        
+        # Parse the URL to add SSL mode if not present
+        parsed = urllib.parse.urlparse(database_url)
+        query_dict = dict(urllib.parse.parse_qsl(parsed.query))
+        
+        # Add SSL mode if not present
+        if 'sslmode' not in query_dict:
+            query_dict['sslmode'] = 'require'
+        
+        # Reconstruct the URL with updated query parameters
+        new_query = urllib.parse.urlencode(query_dict)
+        database_url = urllib.parse.urlunparse((
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            parsed.params,
+            new_query,
+            parsed.fragment
+        ))
     
     print(f"Database URL format: {database_url.split('@')[0].split(':')[0]}://*****@{database_url.split('@')[1] if '@' in database_url else 'local'}", file=sys.stderr)
     
@@ -37,20 +58,35 @@ def create_app():
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'poolclass': NullPool,
         'connect_args': {
-            'connect_timeout': 30
-        }
+            'connect_timeout': 30,
+            'keepalives': 1,
+            'keepalives_idle': 30,
+            'keepalives_interval': 10,
+            'keepalives_count': 5
+        } if database_url.startswith('postgresql://') else {'connect_timeout': 30}
     }
     
     # Test database connection before initializing app
     try:
-        engine = create_engine(database_url, poolclass=NullPool, connect_args={'connect_timeout': 30})
+        engine = create_engine(
+            database_url,
+            poolclass=NullPool,
+            connect_args={
+                'connect_timeout': 30,
+                'keepalives': 1,
+                'keepalives_idle': 30,
+                'keepalives_interval': 10,
+                'keepalives_count': 5
+            } if database_url.startswith('postgresql://') else {'connect_timeout': 30}
+        )
         with engine.connect() as connection:
-            connection.execute("SELECT 1")
+            result = connection.execute("SELECT 1")
+            result.fetchone()  # Actually fetch the result
+            connection.close()  # Explicitly close the connection
         print("Database connection test successful!", file=sys.stderr)
     except Exception as e:
         print(f"Database connection test failed: {str(e)}", file=sys.stderr)
         print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
-        # Continue anyway, as the error might be temporary
     
     # Initialize extensions
     db.init_app(app)
@@ -69,7 +105,8 @@ def create_app():
     with app.app_context():
         try:
             # Test connection again within app context
-            db.session.execute("SELECT 1")
+            result = db.session.execute("SELECT 1")
+            result.fetchone()  # Actually fetch the result
             db.session.commit()
             print("Database connection verified within app context!", file=sys.stderr)
             
