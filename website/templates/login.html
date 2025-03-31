@@ -2,49 +2,128 @@
 {% block title %}Login{% endblock %}
 
 {% block content %}
-<div class="max-w-md mx-auto px-6">
-    <!-- Hero Section -->
-    <div class="text-center mb-12">
-        <h1 class="text-5xl font-semibold tracking-tight mb-4">Welcome Back</h1>
-        <p class="text-xl text-gray-400">Sign in to manage your expenses</p>
-    </div>
+<div class="container">
+    <div class="row justify-content-center align-items-center min-vh-100">
+        <div class="col-md-6 col-lg-5">
+            <div class="text-center mb-4">
+                <h1 class="display-4 mb-2">Welcome Back</h1>
+                <p class="text-muted">Sign in to manage your expenses</p>
+            </div>
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="mb-8 animate-fade-in">
-                    <div class="px-6 py-4 {% if category == 'error' %}bg-red-500/10 text-red-500{% else %}bg-green-500/10 text-green-500{% endif %} rounded-2xl backdrop-blur-xl">
-                        {{ message }}
-                    </div>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <form method="POST" id="loginForm" class="needs-validation" novalidate>
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input 
+                                type="email" 
+                                class="form-control form-control-lg" 
+                                id="email" 
+                                name="email" 
+                                placeholder="Enter your email"
+                                required
+                            />
+                            <div class="invalid-feedback">
+                                Please enter a valid email address
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input 
+                                type="password" 
+                                class="form-control form-control-lg" 
+                                id="password" 
+                                name="password" 
+                                placeholder="Enter your password"
+                                required
+                            />
+                            <div class="invalid-feedback">
+                                Please enter your password
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="custom-control custom-checkbox">
+                                <input 
+                                    type="checkbox" 
+                                    class="custom-control-input" 
+                                    id="remember" 
+                                    name="remember"
+                                />
+                                <label class="custom-control-label" for="remember">
+                                    Remember me
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg btn-block mt-4" id="submitBtn">
+                            Sign In
+                        </button>
+                    </form>
                 </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+            </div>
 
-    <!-- Login Form -->
-    <form method="POST" class="card p-8 space-y-6">
-        <div>
-            <label class="block text-sm font-medium mb-2 text-gray-400" for="email">Email</label>
-            <input type="email" id="email" name="email" required
-                class="input-field w-full"
-                placeholder="Enter your email">
+            <div class="text-center mt-4">
+                <p class="mb-0">
+                    Don't have an account? 
+                    <a href="{{ url_for('auth.sign_up') }}" class="font-weight-bold">
+                        Sign up
+                    </a>
+                </p>
+            </div>
         </div>
-        <div>
-            <label class="block text-sm font-medium mb-2 text-gray-400" for="password">Password</label>
-            <input type="password" id="password" name="password" required
-                class="input-field w-full"
-                placeholder="Enter your password">
-        </div>
-        <button type="submit" class="button-primary w-full">
-            Sign In
-        </button>
-        <p class="text-center text-sm text-gray-400">
-            Don't have an account? 
-            <a href="{{ url_for('auth.sign_up') }}" class="text-accent-color hover:underline">
-                Sign up here
-            </a>
-        </p>
-    </form>
+    </div>
 </div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('loginForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Add validation styles on input
+    form.querySelectorAll('.form-control').forEach(input => {
+        input.addEventListener('input', function() {
+            if (this.checkValidity()) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            } else {
+                this.classList.remove('is-valid');
+                this.classList.add('is-invalid');
+            }
+        });
+    });
+
+    // Form submission handler
+    form.addEventListener('submit', function(e) {
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        form.classList.add('was-validated');
+
+        if (form.checkValidity()) {
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>Signing in...';
+        }
+    });
+});
+</script>
 {% endblock %}
