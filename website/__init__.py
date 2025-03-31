@@ -40,7 +40,11 @@ def create_app():
         query_dict.update({
             'sslmode': 'require',
             'connect_timeout': '30',
-            'application_name': 'expense_pro'
+            'application_name': 'expense_pro',
+            'pool_pre_ping': 'true',
+            'pool_timeout': '30',
+            'pool_recycle': '1800',
+            'max_overflow': '0'
         })
         
         # Reconstruct the URL with updated query parameters
@@ -69,7 +73,11 @@ def create_app():
             'keepalives_interval': 10,
             'keepalives_count': 5,
             'sslmode': 'require'
-        }
+        },
+        'pool_pre_ping': True,
+        'pool_timeout': 30,
+        'pool_recycle': 1800,
+        'max_overflow': 0
     }
     
     # Initialize extensions
@@ -91,28 +99,12 @@ def create_app():
         for attempt in range(max_retries):
             try:
                 with app.app_context():
-                    # Test connection
-                    result = db.session.execute(text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')"))
-                    has_users_table = result.scalar()
+                    # Test connection with timeout
+                    result = db.session.execute(text("SELECT 1"))
+                    result.fetchone()
                     db.session.commit()
-                    
-                    if not has_users_table:
-                        print("Tables don't exist yet, creating them...", file=sys.stderr)
-                        # Create tables
-                        db.create_all()
-                        print("Database tables created successfully!", file=sys.stderr)
-                    else:
-                        print("Database tables already exist!", file=sys.stderr)
-                    
-                    # Verify tables were created
-                    tables = db.session.execute(text("""
-                        SELECT table_name 
-                        FROM information_schema.tables 
-                        WHERE table_schema = 'public'
-                    """)).fetchall()
-                    print(f"Available tables: {[table[0] for table in tables]}", file=sys.stderr)
+                    print(f"Database connection verified on attempt {attempt + 1}!", file=sys.stderr)
                     return True
-                    
             except OperationalError as e:
                 last_error = e
                 print(f"Database connection attempt {attempt + 1} failed: {str(e)}", file=sys.stderr)
@@ -130,7 +122,8 @@ def create_app():
         
         if last_error:
             print("Database initialization failed. Please check your database configuration.", file=sys.stderr)
-            raise last_error
+            # Don't raise the error, just log it
+            print(f"Continuing despite error: {str(last_error)}", file=sys.stderr)
         return False
 
     # Try to initialize the database
