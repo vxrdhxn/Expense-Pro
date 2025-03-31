@@ -2,10 +2,10 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from datetime import datetime
-from os import path
 import os
 import sys
 from dotenv import load_dotenv
+from sqlalchemy.pool import NullPool
 
 load_dotenv()
 
@@ -26,8 +26,15 @@ def create_app():
         
         print(f"Database URL format: {database_url.split('@')[0].split(':')[0]}://*****@{database_url.split('@')[1]}")
         
+        # Configure SQLAlchemy for serverless environment
         app.config['SQLALCHEMY_DATABASE_URI'] = database_url
         app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'poolclass': NullPool,
+            'connect_args': {
+                'connect_timeout': 10
+            }
+        }
         
         # Initialize extensions
         db.init_app(app)
@@ -43,8 +50,12 @@ def create_app():
         
         # Create database tables
         with app.app_context():
-            db.create_all()
-            print('Database tables created successfully!')
+            try:
+                db.create_all()
+                print('Database tables created successfully!')
+            except Exception as e:
+                print(f"Error creating tables: {str(e)}", file=sys.stderr)
+                # Don't raise the error, try to continue
         
         # Setup login manager
         login_manager = LoginManager()
