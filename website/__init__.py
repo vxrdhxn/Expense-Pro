@@ -3,14 +3,17 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from datetime import datetime
 from os import path
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 db = SQLAlchemy()
-DB_NAME = "database.db"
 
 def create_app():
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = 'project123'
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'project123')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     db.init_app(app)
     
@@ -22,7 +25,9 @@ def create_app():
     
     from .models import User, Expense
     
-    create_database(app)
+    with app.app_context():
+        db.create_all()
+        print('Database tables created!')
     
     login_manager = LoginManager()
     login_manager.login_view = 'auth.login'
@@ -32,15 +37,8 @@ def create_app():
     def load_user(id):
         return User.query.get(int(id))
     
-    # Add context processor for current datetime
     @app.context_processor
     def inject_now():
         return {'now': datetime.utcnow()}
     
     return app
-
-def create_database(app):
-    if not path.exists('website/' + DB_NAME):
-        with app.app_context():
-            db.create_all()
-            print('Created Database!')
