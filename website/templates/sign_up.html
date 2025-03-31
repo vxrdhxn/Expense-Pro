@@ -26,14 +26,14 @@
     <form method="POST" class="card p-8 space-y-6">
         <div class="grid grid-cols-2 gap-4">
             <div>
-                <label class="block text-sm font-medium mb-2 text-gray-400" for="firstName">First Name</label>
-                <input type="text" id="firstName" name="firstName" required
+                <label class="block text-sm font-medium mb-2 text-gray-400" for="first-name">First Name</label>
+                <input type="text" id="first-name" name="first-name" required
                     class="input-field w-full"
                     placeholder="Enter first name">
             </div>
             <div>
-                <label class="block text-sm font-medium mb-2 text-gray-400" for="lastName">Last Name</label>
-                <input type="text" id="lastName" name="lastName" required
+                <label class="block text-sm font-medium mb-2 text-gray-400" for="last-name">Last Name</label>
+                <input type="text" id="last-name" name="last-name" required
                     class="input-field w-full"
                     placeholder="Enter last name">
             </div>
@@ -45,16 +45,17 @@
                 placeholder="Enter your email">
         </div>
         <div>
-            <label class="block text-sm font-medium mb-2 text-gray-400" for="password1">Password</label>
-            <input type="password" id="password1" name="password1" required
+            <label class="block text-sm font-medium mb-2 text-gray-400" for="password">Password</label>
+            <input type="password" id="password" name="password" required
                 class="input-field w-full"
                 placeholder="Create a password">
         </div>
-        <div>
-            <label class="block text-sm font-medium mb-2 text-gray-400" for="password2">Confirm Password</label>
-            <input type="password" id="password2" name="password2" required
-                class="input-field w-full"
-                placeholder="Confirm your password">
+        <div class="flex items-center space-x-2">
+            <input type="checkbox" id="terms" name="terms" required
+                class="rounded border-gray-300 text-accent-color focus:ring-accent-color">
+            <label class="text-sm text-gray-400" for="terms">
+                I accept the Terms & Conditions
+            </label>
         </div>
         <button type="submit" class="button-primary w-full">
             Create Account
