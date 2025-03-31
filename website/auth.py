@@ -20,7 +20,7 @@ def login():
         
         user = User.query.filter_by(email=email).first()
         if user:
-            if check_password_hash(user.password_hash, password):
+            if user.verify_password(password):
                 flash('Logged in successfully!', category='success')
                 login_user(user, remember=True)
                 return redirect(url_for('views.home'))
@@ -85,9 +85,9 @@ def sign_up():
                 new_user = User(
                     email=email,
                     first_name=first_name,
-                    last_name=last_name,
-                    password_hash=generate_password_hash(password)
+                    last_name=last_name
                 )
+                new_user.password = password  # This will use the password property setter
 
                 # Add to database
                 db.session.add(new_user)
