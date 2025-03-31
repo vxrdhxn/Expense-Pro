@@ -29,12 +29,20 @@
                             Something went wrong on our end. Please try again later.
                         {% endif %}
                     </p>
-                    <a href="{{ url_for('views.home') }}" class="btn btn-primary mt-3">
-                        Return to Home
-                    </a>
+                    <div class="mt-4">
+                        <a href="{{ url_for('views.home') }}" class="btn btn-primary">
+                            Return to Home
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block user %}
+{% if user is defined %}
+    {{ super() }}
+{% endif %}
 {% endblock %} 

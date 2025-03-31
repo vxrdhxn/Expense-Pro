@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 from datetime import datetime
 import os
 import sys
@@ -140,10 +140,18 @@ def create_app():
         db.session.rollback()
         print(f"500 error: {str(error)}", file=sys.stderr)
         print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
-        return render_template('error.html', error=error), 500
+        try:
+            user = current_user if current_user.is_authenticated else None
+        except:
+            user = None
+        return render_template('error.html', error=error, user=user), 500
     
     @app.errorhandler(404)
     def not_found_error(error):
-        return render_template('error.html', error=error), 404
+        try:
+            user = current_user if current_user.is_authenticated else None
+        except:
+            user = None
+        return render_template('error.html', error=error, user=user), 404
     
     return app
