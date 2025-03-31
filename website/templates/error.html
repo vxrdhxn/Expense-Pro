@@ -5,34 +5,33 @@
 {% block content %}
 <div class="container mt-5">
     <div class="row justify-content-center">
-        <div class="col-md-6">
+        <div class="col-md-8">
             <div class="card">
-                <div class="card-body text-center">
-                    <h1 class="display-1 text-danger mb-4">
-                        {% if error.code == 404 %}
-                            404
-                        {% else %}
-                            500
-                        {% endif %}
-                    </h1>
-                    <h4 class="mb-4">
-                        {% if error.code == 404 %}
-                            Page Not Found
-                        {% else %}
-                            Internal Server Error
-                        {% endif %}
-                    </h4>
-                    <p class="text-muted">
-                        {% if error.code == 404 %}
-                            The page you're looking for doesn't exist.
-                        {% else %}
-                            Something went wrong on our end. Please try again later.
-                        {% endif %}
-                    </p>
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">Error {{ error.code if error.code else '500' }}</h4>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ error_type if error_type else 'Internal Server Error' }}</h5>
+                    <p class="card-text">{{ error }}</p>
+                    
+                    <div class="alert alert-info" role="alert">
+                        <h6>What happened?</h6>
+                        <p>An error occurred while processing your request. This has been logged and will be investigated.</p>
+                        
+                        <h6 class="mt-3">What can you do?</h6>
+                        <ul>
+                            <li>Try refreshing the page</li>
+                            <li>Clear your browser cache and cookies</li>
+                            <li>Try logging out and logging back in</li>
+                            <li>If the problem persists, please try again later</li>
+                        </ul>
+                    </div>
+                    
                     <div class="mt-4">
-                        <a href="{{ url_for('views.home') }}" class="btn btn-primary">
-                            Return to Home
-                        </a>
+                        <a href="{{ url_for('views.home') }}" class="btn btn-primary">Return to Home</a>
+                        {% if not current_user.is_authenticated %}
+                            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary ml-2">Login</a>
+                        {% endif %}
                     </div>
                 </div>
             </div>

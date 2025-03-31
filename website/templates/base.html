@@ -264,6 +264,57 @@
         .progress-fill {
             background-color: rgb(0, 102, 204);
         }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .loading.active {
+            display: flex;
+        }
+        
+        .flash-messages {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+        
+        .flash-message {
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .error-boundary {
+            padding: 20px;
+            margin: 20px;
+            border: 1px solid #dc3545;
+            border-radius: 4px;
+            background-color: #f8d7da;
+        }
     </style>
 
     <!-- Theme Script -->
@@ -333,6 +384,31 @@
         </div>
     </nav>
 
+    <div class="loading">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </div>
+
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    {% if category == 'error' %}
+                        <div class="flash-message alert alert-danger alert-dismissible fade show">
+                    {% else %}
+                        <div class="flash-message alert alert-success alert-dismissible fade show">
+                    {% endif %}
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
     <!-- Main Content -->
     <main class="pt-16 min-h-screen">
         {% block content %}
@@ -347,5 +423,67 @@
             </p>
         </div>
     </footer>
+
+    <script
+        src="https://code.jquery.com/jquery-3.2.1.min.js"
+        crossorigin="anonymous"
+    ></script>
+    <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"
+    ></script>
+    <script
+        src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"
+    ></script>
+    <script>
+        // Show loading overlay during form submissions
+        document.addEventListener('DOMContentLoaded', function() {
+            const forms = document.querySelectorAll('form');
+            const loading = document.querySelector('.loading');
+            
+            forms.forEach(form => {
+                form.addEventListener('submit', function() {
+                    loading.classList.add('active');
+                });
+            });
+            
+            // Auto-hide flash messages after 5 seconds
+            const flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(message => {
+                setTimeout(() => {
+                    $(message).alert('close');
+                }, 5000);
+            });
+            
+            // Global error handler
+            window.onerror = function(msg, url, lineNo, columnNo, error) {
+                console.error('Error: ' + msg + '\nURL: ' + url + '\nLine: ' + lineNo + '\nColumn: ' + columnNo + '\nError object: ' + JSON.stringify(error));
+                return false;
+            };
+            
+            // Handle AJAX errors
+            $(document).ajaxError(function(event, jqXHR, settings, error) {
+                console.error('AJAX Error:', error);
+                const flashMessages = document.querySelector('.flash-messages');
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'flash-message alert alert-danger alert-dismissible fade show';
+                errorDiv.innerHTML = `
+                    Network error occurred. Please try again.
+                    <button type="button" class="close" data-dismiss="alert">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                `;
+                flashMessages.appendChild(errorDiv);
+                setTimeout(() => {
+                    $(errorDiv).alert('close');
+                }, 5000);
+            });
+        });
+    </script>
+    {% block javascript %}
+    {% endblock %}
 </body>
 </html>
