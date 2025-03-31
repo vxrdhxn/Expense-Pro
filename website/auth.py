@@ -68,10 +68,10 @@ def login():
         except TimeoutError:
             flash('Request timed out. Please try again.', category='error')
         except SQLAlchemyError as e:
-            print(f"Database error in login: {str(e)}")
+            print(f"Database error in login: {str(e)}", file=sys.stderr)
             flash('An error occurred while logging in. Please try again.', category='error')
         except Exception as e:
-            print(f"Error in login: {str(e)}")
+            print(f"Error in login: {str(e)}", file=sys.stderr)
             flash('An unexpected error occurred. Please try again.', category='error')
 
     return render_template("login.html", user=current_user)
@@ -85,6 +85,8 @@ def sign_up():
             last_name = request.form.get('last-name')
             password = request.form.get('password')
             terms = request.form.get('terms')
+
+            print(f"Sign-up attempt - Email: {email}, First Name: {first_name}, Last Name: {last_name}", file=sys.stderr)
 
             # Validate all required fields are present
             if not all([email, first_name, last_name, password, terms]):
@@ -120,6 +122,8 @@ def sign_up():
             )
             new_user.password = password  # This will use the password setter to hash
 
+            print("Attempting to add user to database...", file=sys.stderr)
+
             # Add user to database with retry logic
             max_retries = 3
             retry_count = 0
@@ -127,21 +131,31 @@ def sign_up():
                 try:
                     db.session.add(new_user)
                     db.session.commit()
+                    print("User added successfully!", file=sys.stderr)
                     login_user(new_user, remember=True)
                     flash('Account created successfully!', category='success')
                     return redirect(url_for('views.home'))
-                except SQLAlchemyError as e:
+                except IntegrityError as e:
+                    db.session.rollback()
+                    print(f"IntegrityError in sign_up: {str(e)}", file=sys.stderr)
+                    flash('Email already exists.', category='error')
+                    break
+                except OperationalError as e:
                     db.session.rollback()
                     retry_count += 1
+                    print(f"OperationalError in sign_up (attempt {retry_count}): {str(e)}", file=sys.stderr)
                     if retry_count == max_retries:
-                        print(f"Database error in sign_up after {max_retries} retries: {str(e)}")
-                        flash('An error occurred while creating your account. Please try again.', category='error')
-                    time.sleep(0.5)  # Wait before retrying
+                        flash('Database connection error. Please try again.', category='error')
+                    time.sleep(0.5)
+                except SQLAlchemyError as e:
+                    db.session.rollback()
+                    print(f"Database error in sign_up: {str(e)}", file=sys.stderr)
+                    flash('An error occurred while creating your account. Please try again.', category='error')
+                    break
 
-        except TimeoutError:
-            flash('Request timed out. Please try again.', category='error')
         except Exception as e:
-            print(f"Error in sign_up: {str(e)}")
+            print(f"Error in sign_up: {str(e)}", file=sys.stderr)
+            print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
             flash('An unexpected error occurred. Please try again.', category='error')
 
     return render_template("sign_up.html", user=current_user)
@@ -149,13 +163,8 @@ def sign_up():
 @auth.route('/logout')
 @login_required
 def logout():
-    try:
-        logout_user()
-        flash('Logged out successfully!', category='success')
-    except Exception as e:
-        print(f"Error in logout: {str(e)}")
-        flash('An error occurred while logging out.', category='error')
-    return redirect(url_for('auth.login'))
+    logout_user()
+    return redirect(url_for('views.index'))
 
 @auth.route('/check-email', methods=['POST'])
 def check_email():
@@ -177,7 +186,7 @@ def check_email():
         return jsonify({'exists': user is not None})
         
     except Exception as e:
-        print(f"Error in check_email: {str(e)}")
+        print(f"Error in check_email: {str(e)}", file=sys.stderr)
         return jsonify({'error': 'An error occurred while checking email'}), 500
 
 

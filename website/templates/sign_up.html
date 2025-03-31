@@ -2,11 +2,11 @@
 {% block title %}Sign Up{% endblock %}
 
 {% block content %}
-<div class="max-w-md mx-auto px-6">
-    <!-- Hero Section -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Page Title -->
     <div class="text-center mb-12">
-        <h1 class="text-5xl font-semibold tracking-tight mb-4">Create Account</h1>
-        <p class="text-xl text-gray-400">Start managing your expenses today</p>
+        <h1 class="text-4xl font-semibold tracking-tight mb-4">Create Your Account</h1>
+        <p class="text-xl text-gray-400">Join ExpensePro and start managing your expenses</p>
     </div>
 
     <!-- Flash Messages -->
@@ -23,50 +23,52 @@
     {% endwith %}
 
     <!-- Sign Up Form -->
-    <form method="POST" id="signUpForm" class="card p-8 space-y-6">
-        <div>
-            <label class="block text-sm font-medium mb-2 text-gray-400" for="first-name">First Name</label>
-            <input type="text" id="firstName" name="first-name" required
-                class="input-field w-full"
-                placeholder="Enter your first name">
-        </div>
-        <div>
-            <label class="block text-sm font-medium mb-2 text-gray-400" for="last-name">Last Name</label>
-            <input type="text" id="lastName" name="last-name" required
-                class="input-field w-full"
-                placeholder="Enter your last name">
-        </div>
-        <div>
-            <label class="block text-sm font-medium mb-2 text-gray-400" for="email">Email</label>
-            <input type="email" id="email" name="email" required
-                class="input-field w-full"
-                placeholder="Enter your email">
-            <div id="emailError" class="mt-2 text-sm text-red-500 hidden"></div>
-        </div>
-        <div>
-            <label class="block text-sm font-medium mb-2 text-gray-400" for="password">Password</label>
-            <input type="password" id="password" name="password" required
-                class="input-field w-full"
-                placeholder="Enter your password">
-            <p class="mt-2 text-sm text-gray-400">Password must be at least 7 characters long</p>
-        </div>
-        <div class="flex items-center">
-            <input type="checkbox" id="terms" name="terms" required
-                class="h-4 w-4 rounded border-gray-300 text-accent-color focus:ring-accent-color">
-            <label for="terms" class="ml-2 block text-sm text-gray-400">
-                I agree to the Terms & Conditions
-            </label>
-        </div>
-        <button type="submit" id="submitBtn" class="button-primary w-full">
-            Create Account
-        </button>
-        <p class="text-center text-sm text-gray-400">
-            Already have an account? 
-            <a href="{{ url_for('auth.login') }}" class="text-accent-color hover:underline">
-                Login
-            </a>
-        </p>
-    </form>
+    <div class="max-w-md mx-auto">
+        <form method="POST" id="signUpForm" class="card p-8 space-y-6">
+            <div>
+                <label class="block text-sm font-medium mb-2 text-gray-400" for="first-name">First Name</label>
+                <input type="text" id="firstName" name="first-name" required
+                    class="input-field w-full"
+                    placeholder="Enter your first name">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2 text-gray-400" for="last-name">Last Name</label>
+                <input type="text" id="lastName" name="last-name" required
+                    class="input-field w-full"
+                    placeholder="Enter your last name">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2 text-gray-400" for="email">Email</label>
+                <input type="email" id="email" name="email" required
+                    class="input-field w-full"
+                    placeholder="Enter your email">
+                <div id="emailError" class="mt-2 text-sm text-red-500 hidden"></div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2 text-gray-400" for="password">Password</label>
+                <input type="password" id="password" name="password" required
+                    class="input-field w-full"
+                    placeholder="Enter your password">
+                <p class="mt-2 text-sm text-gray-400">Password must be at least 7 characters long</p>
+            </div>
+            <div class="flex items-center">
+                <input type="checkbox" id="terms" name="terms" required
+                    class="h-4 w-4 rounded border-gray-300 text-accent-color focus:ring-accent-color">
+                <label for="terms" class="ml-2 block text-sm text-gray-400">
+                    I agree to the Terms & Conditions
+                </label>
+            </div>
+            <button type="submit" id="submitBtn" class="button-primary w-full">
+                Create Account
+            </button>
+            <p class="text-center text-sm text-gray-400">
+                Already have an account? 
+                <a href="{{ url_for('auth.login') }}" class="text-accent-color hover:text-accent-color-dark">
+                    Login here
+                </a>
+            </p>
+        </form>
+    </div>
 </div>
 
 {% block javascript %}
@@ -76,108 +78,93 @@ document.addEventListener('DOMContentLoaded', function() {
     const emailInput = document.getElementById('email');
     const emailError = document.getElementById('emailError');
     const submitBtn = document.getElementById('submitBtn');
-    let emailTimeout;
-    
-    // Function to validate email format
-    function isValidEmail(email) {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test(email);
-    }
-    
-    // Function to check if email exists
-    async function checkEmail(email) {
-        try {
-            const response = await fetch('/check-email', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email: email })
-            });
-            
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            
-            const data = await response.json();
-            return data.exists;
-        } catch (error) {
-            console.error('Error checking email:', error);
-            return false;
-        }
-    }
-    
-    // Email input handler with debounce
-    emailInput.addEventListener('input', function() {
-        clearTimeout(emailTimeout);
-        const email = this.value.trim();
+    let emailCheckTimeout;
+    let controller;
+
+    // Email validation function
+    async function validateEmail() {
+        const email = emailInput.value;
         
-        if (!email || !isValidEmail(email)) {
-            emailError.style.display = 'block';
-            emailError.textContent = 'Please enter a valid email address';
-            this.classList.add('border-red-500');
-            return;
-        }
+        // Clear previous timeout and abort controller
+        if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
+        if (controller) controller.abort();
         
-        emailTimeout = setTimeout(async () => {
-            const exists = await checkEmail(email);
-            if (exists) {
-                emailError.style.display = 'block';
-                emailError.textContent = 'This email is already registered';
-                this.classList.add('border-red-500');
-                submitBtn.disabled = true;
-                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            } else {
-                emailError.style.display = 'none';
-                this.classList.remove('border-red-500');
+        // Create new abort controller
+        controller = new AbortController();
+        
+        // Show loading state
+        emailError.textContent = 'Checking email...';
+        emailError.classList.remove('hidden');
+        submitBtn.disabled = true;
+        
+        // Debounce the API call
+        emailCheckTimeout = setTimeout(async () => {
+            try {
+                const response = await fetch('/check-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email }),
+                    signal: controller.signal
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    emailError.textContent = data.error;
+                    emailError.classList.remove('hidden');
+                    submitBtn.disabled = true;
+                } else if (data.exists) {
+                    emailError.textContent = 'This email is already registered';
+                    emailError.classList.remove('hidden');
+                    submitBtn.disabled = true;
+                } else {
+                    emailError.classList.add('hidden');
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                emailError.textContent = 'An error occurred while checking email availability. Please try again.';
+                emailError.classList.remove('hidden');
                 submitBtn.disabled = false;
-                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }, 500);
-    });
+    }
+
+    // Add email input event listener
+    emailInput.addEventListener('input', validateEmail);
     
     // Form submission handler
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        // Validate all fields
-        const firstName = document.getElementById('firstName').value.trim();
-        const lastName = document.getElementById('lastName').value.trim();
-        const email = emailInput.value.trim();
+    form.addEventListener('submit', function(e) {
+        const firstName = document.getElementById('firstName').value;
+        const lastName = document.getElementById('lastName').value;
         const password = document.getElementById('password').value;
         const terms = document.getElementById('terms').checked;
         
-        // Basic validation
-        if (!firstName || !lastName || !email || !password || !terms) {
+        if (firstName.length < 2) {
+            e.preventDefault();
+            alert('First name must be at least 2 characters long');
             return;
         }
         
-        if (firstName.length < 2 || lastName.length < 2) {
-            return;
-        }
-        
-        if (!isValidEmail(email)) {
-            emailError.style.display = 'block';
-            emailError.textContent = 'Please enter a valid email address';
+        if (lastName.length < 2) {
+            e.preventDefault();
+            alert('Last name must be at least 2 characters long');
             return;
         }
         
         if (password.length < 7) {
+            e.preventDefault();
+            alert('Password must be at least 7 characters long');
             return;
         }
         
-        // Show loading state
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = `
-            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Creating account...
-        `;
-        
-        // If all validations pass, submit the form
-        this.submit();
+        if (!terms) {
+            e.preventDefault();
+            alert('Please accept the Terms & Conditions');
+            return;
+        }
     });
 });
 </script>
