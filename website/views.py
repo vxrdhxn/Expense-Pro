@@ -13,14 +13,78 @@ views = Blueprint('views', __name__)
 def index():
     if current_user.is_authenticated:
         today = datetime.now().strftime('%Y-%m-%d')
-        return render_template('home.html', user=current_user, today_date=today)
+        
+        # Get recent expenses
+        recent_expenses = Expense.query.filter_by(user_id=current_user.id)\
+            .order_by(Expense.date.desc())\
+            .limit(5)\
+            .all()
+            
+        # Calculate monthly stats
+        first_day = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if first_day.month == 12:
+            last_day = first_day.replace(year=first_day.year + 1, month=1, day=1) - timedelta(days=1)
+        else:
+            last_day = first_day.replace(month=first_day.month + 1, day=1) - timedelta(days=1)
+            
+        monthly_expenses = Expense.query.filter(
+            Expense.user_id == current_user.id,
+            Expense.date >= first_day,
+            Expense.date <= last_day
+        ).all()
+        
+        total_expenses = sum(expense.amount for expense in monthly_expenses)
+        total_transactions = len(monthly_expenses)
+        average_expense = total_expenses / total_transactions if total_transactions > 0 else 0
+        
+        return render_template(
+            'home.html',
+            user=current_user,
+            today_date=today,
+            expenses=recent_expenses,
+            total_expenses=total_expenses,
+            average_expense=average_expense,
+            total_transactions=total_transactions
+        )
     return render_template('landing.html')
 
 @views.route('/home')
 @login_required
 def home():
     today = datetime.now().strftime('%Y-%m-%d')
-    return render_template('home.html', user=current_user, today_date=today)
+    
+    # Get recent expenses
+    recent_expenses = Expense.query.filter_by(user_id=current_user.id)\
+        .order_by(Expense.date.desc())\
+        .limit(5)\
+        .all()
+        
+    # Calculate monthly stats
+    first_day = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if first_day.month == 12:
+        last_day = first_day.replace(year=first_day.year + 1, month=1, day=1) - timedelta(days=1)
+    else:
+        last_day = first_day.replace(month=first_day.month + 1, day=1) - timedelta(days=1)
+        
+    monthly_expenses = Expense.query.filter(
+        Expense.user_id == current_user.id,
+        Expense.date >= first_day,
+        Expense.date <= last_day
+    ).all()
+    
+    total_expenses = sum(expense.amount for expense in monthly_expenses)
+    total_transactions = len(monthly_expenses)
+    average_expense = total_expenses / total_transactions if total_transactions > 0 else 0
+    
+    return render_template(
+        'home.html',
+        user=current_user,
+        today_date=today,
+        expenses=recent_expenses,
+        total_expenses=total_expenses,
+        average_expense=average_expense,
+        total_transactions=total_transactions
+    )
 
 @views.route('/add-expense', methods=['POST'])
 @login_required
