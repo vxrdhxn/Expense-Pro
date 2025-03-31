@@ -21,10 +21,9 @@ def create_app():
     
     # Basic configuration
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'project123')
-    app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
     
-    # Ensure upload folder exists
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    # Configure static files for serverless
+    app.config['STATIC_FOLDER'] = None  # Disable automatic static serving
     
     # Database configuration with detailed logging
     database_url = os.getenv('DATABASE_URL')
@@ -86,8 +85,7 @@ def create_app():
         status = {
             'status': 'healthy',
             'checks': {
-                'database': 'unknown',
-                'storage': 'unknown'
+                'database': 'unknown'
             }
         }
         
@@ -99,18 +97,6 @@ def create_app():
         except Exception as e:
             print(f"Health check - Database failed: {str(e)}", file=sys.stderr)
             status['checks']['database'] = 'disconnected'
-            status['status'] = 'unhealthy'
-        
-        # Check storage (upload folder)
-        try:
-            if os.path.exists(app.config['UPLOAD_FOLDER']) and os.access(app.config['UPLOAD_FOLDER'], os.W_OK):
-                status['checks']['storage'] = 'accessible'
-            else:
-                status['checks']['storage'] = 'inaccessible'
-                status['status'] = 'unhealthy'
-        except Exception as e:
-            print(f"Health check - Storage failed: {str(e)}", file=sys.stderr)
-            status['checks']['storage'] = 'error'
             status['status'] = 'unhealthy'
         
         return jsonify(status), 200 if status['status'] == 'healthy' else 500
@@ -219,4 +205,9 @@ def create_app():
             user = None
         return render_template('error.html', error=error, user=user), 404
     
+    # Handle favicon.ico requests
+    @app.route('/favicon.ico')
+    def favicon():
+        return '', 204  # Return no content
+        
     return app
