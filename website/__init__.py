@@ -6,11 +6,6 @@ import os
 import sys
 import traceback
 from dotenv import load_dotenv
-from sqlalchemy.pool import NullPool
-from sqlalchemy import create_engine, text
-from sqlalchemy.exc import SQLAlchemyError, OperationalError, TimeoutError
-import urllib.parse
-import time
 from os import path
 
 load_dotenv()
@@ -27,56 +22,9 @@ def create_app():
     # Configure static files for serverless
     app.config['STATIC_FOLDER'] = None  # Disable automatic static serving
     
-    # Database configuration with detailed logging
-    database_url = os.getenv('DATABASE_URL')
-    if not database_url:
-        print("No DATABASE_URL environment variable set", file=sys.stderr)
-        raise ValueError("DATABASE_URL environment variable is required")
-    
-    print("Initializing database connection...", file=sys.stderr)
-    
-    # Parse and modify database URL for PostgreSQL
-    if database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql://", 1)
-        
-        # Parse the URL
-        parsed = urllib.parse.urlparse(database_url)
-        query_dict = dict(urllib.parse.parse_qsl(parsed.query))
-        
-        # Add required parameters for Supabase
-        query_dict.update({
-            'sslmode': 'require',
-            'connect_timeout': '10',
-            'application_name': 'expense_pro',
-            'statement_timeout': '30000',  # 30 seconds
-            'idle_in_transaction_session_timeout': '30000'  # 30 seconds
-        })
-        
-        # Reconstruct the URL with updated query parameters
-        new_query = urllib.parse.urlencode(query_dict)
-        database_url = urllib.parse.urlunparse((
-            parsed.scheme,
-            parsed.netloc,
-            parsed.path,
-            parsed.params,
-            new_query,
-            parsed.fragment
-        ))
-    
-    print(f"Database URL format: {database_url.split('@')[0].split(':')[0]}://*****@{database_url.split('@')[1] if '@' in database_url else 'local'}", file=sys.stderr)
-    
-    # Configure SQLAlchemy for serverless environment
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    # Database configuration
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'poolclass': NullPool,  # Disable connection pooling
-        'connect_args': {
-            'connect_timeout': 10,
-            'application_name': 'expense_pro',
-            'sslmode': 'require',
-            'options': '-c statement_timeout=30000 -c idle_in_transaction_session_timeout=30000'
-        }
-    }
     
     # Initialize extensions
     db.init_app(app)
@@ -93,7 +41,7 @@ def create_app():
         
         # Check database
         try:
-            db.session.execute(text('SELECT 1'))
+            db.session.execute('SELECT 1')
             db.session.commit()
             status['checks']['database'] = 'connected'
         except Exception as e:
