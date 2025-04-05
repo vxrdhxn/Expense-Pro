@@ -2,7 +2,6 @@ from flask import Blueprint, render_template, request, flash, jsonify, redirect,
 from flask_login import login_required, current_user
 from .models import Expense, User, SUPPORTED_CURRENCIES
 from . import db
-from .utils import convert_currency, format_currency
 import json
 from datetime import datetime
 from sqlalchemy import extract, func
@@ -12,7 +11,30 @@ views = Blueprint('views', __name__)
 @views.route('/')
 @login_required
 def home():
-    return render_template('home.html', user=current_user, currencies=SUPPORTED_CURRENCIES)
+    # Get current month's expenses
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+    
+    expenses = Expense.query.filter(
+        Expense.user_id == current_user.id,
+        extract('year', Expense.date) == current_year,
+        extract('month', Expense.date) == current_month
+    ).order_by(Expense.date.desc()).all()
+    
+    # Calculate statistics
+    total_expenses = sum(expense.amount for expense in expenses)
+    total_transactions = len(expenses)
+    average_expense = total_expenses / total_transactions if total_transactions > 0 else 0
+    
+    return render_template(
+        'home.html',
+        user=current_user,
+        expenses=expenses,
+        total_expenses=total_expenses,
+        total_transactions=total_transactions,
+        average_expense=average_expense,
+        today_date=datetime.now().strftime('%Y-%m-%d')
+    )
 
 @views.route('/add-expense', methods=['POST'])
 @login_required
@@ -20,7 +42,6 @@ def add_expense():
     try:
         data = request.json
         amount = float(data.get('amount', 0))
-        currency = data.get('currency', current_user.preferred_currency)
         description = data.get('description', '').strip()
         category = data.get('category', '').strip()
         date_str = data.get('date')
@@ -31,8 +52,6 @@ def add_expense():
             return jsonify({'error': 'Description is required'}), 400
         if not category:
             return jsonify({'error': 'Category is required'}), 400
-        if currency not in SUPPORTED_CURRENCIES:
-            return jsonify({'error': 'Invalid currency'}), 400
 
         try:
             date = datetime.strptime(date_str, '%Y-%m-%d') if date_str else datetime.now()
@@ -41,7 +60,6 @@ def add_expense():
 
         expense = Expense(
             amount=amount,
-            currency=currency,
             description=description,
             category=category,
             date=date,
@@ -52,64 +70,11 @@ def add_expense():
 
         return jsonify({
             'message': 'Expense added successfully',
-            'expense': expense.to_dict(current_user.preferred_currency)
+            'expense': expense.to_dict()
         })
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-@views.route('/get-expenses')
-@login_required
-def get_expenses():
-    try:
-        # Get query parameters
-        period = request.args.get('period', 'all')
-        category = request.args.get('category')
-        currency = request.args.get('currency', current_user.preferred_currency)
-        
-        # Base query
-        query = Expense.query.filter_by(user_id=current_user.id)
-        
-        # Apply period filter
-        if period == 'month':
-            current_month = datetime.now().month
-            current_year = datetime.now().year
-            query = query.filter(
-                extract('year', Expense.date) == current_year,
-                extract('month', Expense.date) == current_month
-            )
-        elif period == 'year':
-            current_year = datetime.now().year
-            query = query.filter(extract('year', Expense.date) == current_year)
-        
-        # Apply category filter
-        if category:
-            query = query.filter_by(category=category)
-        
-        # Get expenses
-        expenses = query.order_by(Expense.date.desc()).all()
-        
-        # Calculate totals
-        total_amount = 0
-        for expense in expenses:
-            if expense.currency != currency:
-                amount = expense.get_amount_in_currency(currency)
-            else:
-                amount = expense.amount
-            total_amount += amount
-        
-        # Format response
-        return jsonify({
-            'expenses': [expense.to_dict(currency) for expense in expenses],
-            'total': {
-                'amount': total_amount,
-                'currency': currency,
-                'formatted': format_currency(total_amount, currency)
-            }
-        })
-    
-    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @views.route('/update-expense/<int:expense_id>', methods=['PUT'])
@@ -132,12 +97,6 @@ def update_expense(expense_id):
             except ValueError:
                 return jsonify({'error': 'Invalid amount format'}), 400
 
-        if 'currency' in data:
-            currency = data['currency']
-            if currency not in SUPPORTED_CURRENCIES:
-                return jsonify({'error': 'Invalid currency'}), 400
-            expense.currency = currency
-
         if 'description' in data:
             description = data['description'].strip()
             if not description:
@@ -159,7 +118,7 @@ def update_expense(expense_id):
         db.session.commit()
         return jsonify({
             'message': 'Expense updated successfully',
-            'expense': expense.to_dict(current_user.preferred_currency)
+            'expense': expense.to_dict()
         })
 
     except Exception as e:
@@ -188,8 +147,6 @@ def delete_expense(expense_id):
 @login_required
 def get_stats():
     try:
-        currency = request.args.get('currency', current_user.preferred_currency)
-        
         # Get current month and year
         current_month = datetime.now().month
         current_year = datetime.now().year
@@ -208,15 +165,8 @@ def get_stats():
         ).all()
         
         # Calculate totals
-        monthly_total = sum(
-            expense.get_amount_in_currency(currency)
-            for expense in monthly_expenses
-        )
-        
-        yearly_total = sum(
-            expense.get_amount_in_currency(currency)
-            for expense in yearly_expenses
-        )
+        monthly_total = sum(expense.amount for expense in monthly_expenses)
+        yearly_total = sum(expense.amount for expense in yearly_expenses)
         
         # Calculate averages
         monthly_avg = monthly_total / len(monthly_expenses) if monthly_expenses else 0
@@ -225,54 +175,33 @@ def get_stats():
         # Get category breakdown for current month
         category_totals = {}
         for expense in monthly_expenses:
-            amount = expense.get_amount_in_currency(currency)
-            category_totals[expense.category] = category_totals.get(expense.category, 0) + amount
+            category_totals[expense.category] = category_totals.get(expense.category, 0) + expense.amount
         
         # Format response
         return jsonify({
             'monthly': {
                 'total': monthly_total,
-                'formatted_total': format_currency(monthly_total, currency),
+                'formatted_total': f"{current_user.get_currency_symbol()}{monthly_total:,.2f}",
                 'average': monthly_avg,
-                'formatted_average': format_currency(monthly_avg, currency),
+                'formatted_average': f"{current_user.get_currency_symbol()}{monthly_avg:,.2f}",
                 'count': len(monthly_expenses)
             },
             'yearly': {
                 'total': yearly_total,
-                'formatted_total': format_currency(yearly_total, currency),
+                'formatted_total': f"{current_user.get_currency_symbol()}{yearly_total:,.2f}",
                 'average': yearly_avg,
-                'formatted_average': format_currency(yearly_avg, currency),
+                'formatted_average': f"{current_user.get_currency_symbol()}{yearly_avg:,.2f}",
                 'count': len(yearly_expenses)
             },
             'categories': {
                 category: {
                     'total': total,
-                    'formatted_total': format_currency(total, currency),
+                    'formatted_total': f"{current_user.get_currency_symbol()}{total:,.2f}",
                     'percentage': (total / monthly_total * 100) if monthly_total > 0 else 0
                 }
                 for category, total in category_totals.items()
-            },
-            'currency': currency
+            }
         })
     
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@views.route('/update-settings', methods=['POST'])
-@login_required
-def update_settings():
-    try:
-        data = request.json
-        
-        if 'preferred_currency' in data:
-            currency = data['preferred_currency']
-            if currency not in SUPPORTED_CURRENCIES:
-                return jsonify({'error': 'Invalid currency'}), 400
-            current_user.preferred_currency = currency
-        
-        db.session.commit()
-        return jsonify({'message': 'Settings updated successfully'})
-    
-    except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500 
