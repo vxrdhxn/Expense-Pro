@@ -2,18 +2,26 @@
     "version": 2,
     "builds": [
         {
-            "src": "website/__init__.py",
+            "src": "index.py",
             "use": "@vercel/python"
         }
     ],
     "routes": [
         {
+            "src": "/static/(.*)",
+            "dest": "/static/$1",
+            "headers": {
+                "cache-control": "public, max-age=31536000, immutable"
+            }
+        },
+        {
             "src": "/(.*)",
-            "dest": "website/__init__.py"
+            "dest": "index.py"
         }
     ],
     "env": {
-        "FLASK_APP": "website/__init__.py",
-        "FLASK_ENV": "production"
+        "FLASK_APP": "index.py",
+        "FLASK_ENV": "production",
+        "PYTHONUNBUFFERED": "1"
     }
 } 
