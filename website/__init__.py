@@ -3,17 +3,28 @@ from flask_login import LoginManager, current_user
 from datetime import datetime
 import os
 import sys
+import json
 import traceback
 from dotenv import load_dotenv
-from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure
 
 load_dotenv()
 
-# MongoDB setup
-MONGO_URI = os.getenv('MONGODB_URI', 'mongodb+srv://your-mongodb-uri')
-client = MongoClient(MONGO_URI)
-db = client.get_database('expensepro')
+# Simple storage setup
+STORAGE_DIR = '/tmp'
+USERS_FILE = os.path.join(STORAGE_DIR, 'users.json')
+EXPENSES_FILE = os.path.join(STORAGE_DIR, 'expenses.json')
+
+def save_data(file_path, data):
+    os.makedirs(STORAGE_DIR, exist_ok=True)
+    with open(file_path, 'w') as f:
+        json.dump(data, f)
+
+def load_data(file_path):
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
 
 def create_app():
     app = Flask(__name__)
@@ -28,22 +39,25 @@ def create_app():
         status = {
             'status': 'healthy',
             'checks': {
-                'database': 'unknown'
+                'storage': 'unknown'
             }
         }
         
-        # Check database
+        # Check storage
         try:
-            # MongoDB ping
-            client.admin.command('ping')
-            status['checks']['database'] = 'connected'
-        except ConnectionFailure as e:
-            print(f"Health check - Database failed: {str(e)}", file=sys.stderr)
-            status['checks']['database'] = 'disconnected'
-            status['status'] = 'unhealthy'
+            # Try to write and read from storage
+            test_file = os.path.join(STORAGE_DIR, 'test.json')
+            save_data(test_file, {'test': 'data'})
+            test_data = load_data(test_file)
+            if test_data.get('test') == 'data':
+                status['checks']['storage'] = 'working'
+            else:
+                status['checks']['storage'] = 'error'
+                status['status'] = 'unhealthy'
+            os.remove(test_file)
         except Exception as e:
-            print(f"Health check - Unexpected error: {str(e)}", file=sys.stderr)
-            status['checks']['database'] = 'error'
+            print(f"Health check - Storage failed: {str(e)}", file=sys.stderr)
+            status['checks']['storage'] = 'error'
             status['status'] = 'unhealthy'
         
         return jsonify(status), 200 if status['status'] == 'healthy' else 500
@@ -57,7 +71,7 @@ def create_app():
     app.register_blueprint(auth, url_prefix='/')
     app.register_blueprint(settings, url_prefix='/')
     
-    # Import models (for MongoDB, these will be schema definitions)
+    # Import models
     from .models import User
     
     # Setup login manager
@@ -68,9 +82,10 @@ def create_app():
     @login_manager.user_loader
     def load_user(user_id):
         try:
-            user_data = db.users.find_one({'_id': user_id})
+            users = load_data(USERS_FILE)
+            user_data = users.get(str(user_id))
             if user_data:
-                return User.from_db(user_data)
+                return User.from_dict(user_data)
             return None
         except Exception as e:
             print(f"Error loading user {user_id}: {str(e)}", file=sys.stderr)
@@ -82,6 +97,8 @@ def create_app():
         def format_datetime(dt):
             if dt is None:
                 return ""
+            if isinstance(dt, str):
+                return dt
             return dt.strftime('%Y-%m-%d %H:%M:%S')
         return dict(format_datetime=format_datetime, now=datetime.utcnow)
     
