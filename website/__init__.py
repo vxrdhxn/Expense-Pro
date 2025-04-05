@@ -11,16 +11,18 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, TimeoutError
 import urllib.parse
 import time
+from os import path
 
 load_dotenv()
 
 db = SQLAlchemy()
+DB_NAME = "database.db"
 
 def create_app():
     app = Flask(__name__)
     
     # Basic configuration
-    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'project123')
+    app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev')
     
     # Configure static files for serverless
     app.config['STATIC_FOLDER'] = None  # Disable automatic static serving
@@ -104,53 +106,17 @@ def create_app():
     # Register blueprints
     from .views import views
     from .auth import auth
+    from .settings import settings
     
     app.register_blueprint(views, url_prefix='/')
     app.register_blueprint(auth, url_prefix='/')
+    app.register_blueprint(settings, url_prefix='/')
     
     # Import models
     from .models import User, Expense
     
-    # Initialize database with retry mechanism
-    def init_db_with_retry(max_retries=5, retry_delay=1):  # Increased retries
-        last_error = None
-        for attempt in range(max_retries):
-            try:
-                with app.app_context():
-                    print(f"Attempt {attempt + 1}: Testing database connection...", file=sys.stderr)
-                    # Test connection
-                    result = db.session.execute(text('SELECT 1'))
-                    result.fetchone()
-                    db.session.commit()
-                    print(f"Database connection successful on attempt {attempt + 1}!", file=sys.stderr)
-                    return True
-            except (OperationalError, TimeoutError) as e:
-                last_error = e
-                print(f"Database connection attempt {attempt + 1} failed: {str(e)}", file=sys.stderr)
-                print(f"Error type: {type(e).__name__}", file=sys.stderr)
-                print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
-                if attempt < max_retries - 1:
-                    print(f"Retrying in {retry_delay} seconds...", file=sys.stderr)
-                    time.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
-                else:
-                    print("Max retries reached.", file=sys.stderr)
-            except Exception as e:
-                last_error = e
-                print(f"Unexpected error during database initialization: {str(e)}", file=sys.stderr)
-                print(f"Error type: {type(e).__name__}", file=sys.stderr)
-                print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
-                break
-        
-        if last_error:
-            print("Database initialization failed. Please check your database configuration.", file=sys.stderr)
-            print(f"Final error: {str(last_error)}", file=sys.stderr)
-        return False
-
-    # Try to initialize the database
-    print("Starting database initialization...", file=sys.stderr)
-    init_success = init_db_with_retry()
-    print(f"Database initialization {'successful' if init_success else 'failed'}", file=sys.stderr)
+    # Create database
+    create_database(app)
     
     # Setup login manager
     login_manager = LoginManager()
@@ -211,3 +177,9 @@ def create_app():
         return '', 204  # Return no content
         
     return app
+
+def create_database(app):
+    if not path.exists('website/' + DB_NAME):
+        with app.app_context():
+            db.create_all()
+            print('Created Database!')

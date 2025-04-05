@@ -1,134 +1,267 @@
 {% extends "base.html" %}
+
 {% block title %}Settings{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto px-6">
-    <!-- Hero Section -->
-    <div class="text-center mb-12">
-        <h1 class="text-5xl font-semibold tracking-tight mb-4">Settings</h1>
-        <p class="text-xl text-gray-400">Customize your ExpensePro experience</p>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="py-8">
+        <h1 class="text-3xl font-bold text-gray-900">Account Settings</h1>
+        <p class="mt-2 text-sm text-gray-600">Manage your account preferences and settings</p>
     </div>
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="mb-8 animate-fade-in">
-                    <div class="px-6 py-4 {% if category == 'error' %}bg-red-500/10 text-red-500{% else %}bg-green-500/10 text-green-500{% endif %} rounded-2xl backdrop-blur-xl">
-                        {{ message }}
-                    </div>
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    <!-- Settings Sections -->
-    <div class="space-y-8">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <!-- Profile Settings -->
-        <div class="card p-8">
-            <h2 class="text-2xl font-semibold mb-6">Profile Settings</h2>
-            <form method="POST" action="{{ url_for('views.update_profile') }}" class="space-y-6">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-2 text-gray-400" for="firstName">First Name</label>
-                        <input type="text" id="firstName" name="firstName" required
-                            class="input-field w-full"
-                            value="{{ user.first_name }}"
-                            placeholder="Enter first name">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2 text-gray-400" for="lastName">Last Name</label>
-                        <input type="text" id="lastName" name="lastName" required
-                            class="input-field w-full"
-                            value="{{ user.last_name }}"
-                            placeholder="Enter last name">
-                    </div>
+        <div class="bg-white shadow rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Profile Information</h2>
+            <form id="profileForm" class="space-y-4">
+                <div>
+                    <label for="firstName" class="block text-sm font-medium text-gray-700">First Name</label>
+                    <input type="text" id="firstName" name="first_name" value="{{ user.first_name }}"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-2 text-gray-400" for="email">Email</label>
-                    <input type="email" id="email" name="email" required
-                        class="input-field w-full"
-                        value="{{ user.email }}"
-                        placeholder="Enter your email">
+                    <label for="lastName" class="block text-sm font-medium text-gray-700">Last Name</label>
+                    <input type="text" id="lastName" name="last_name" value="{{ user.last_name }}"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                 </div>
-                <button type="submit" class="button-primary">
-                    Update Profile
-                </button>
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="email" name="email" value="{{ user.email }}" readonly
+                        class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit"
+                        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Save Changes
+                    </button>
+                </div>
             </form>
         </div>
 
-        <!-- Currency Settings -->
-        <div class="card p-8">
-            <h2 class="text-2xl font-semibold mb-6">Currency Settings</h2>
-            <form method="POST" action="{{ url_for('views.update_currency') }}" class="space-y-6">
+        <!-- Budget Settings -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Budget Settings</h2>
+            <form id="budgetForm" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium mb-2 text-gray-400" for="currency">Preferred Currency</label>
-                    <select id="currency" name="currency" required class="input-field w-full">
-                        <option value="USD" {% if user.currency == 'USD' %}selected{% endif %}>USD - US Dollar</option>
-                        <option value="EUR" {% if user.currency == 'EUR' %}selected{% endif %}>EUR - Euro</option>
-                        <option value="GBP" {% if user.currency == 'GBP' %}selected{% endif %}>GBP - British Pound</option>
-                        <option value="JPY" {% if user.currency == 'JPY' %}selected{% endif %}>JPY - Japanese Yen</option>
-                        <option value="AUD" {% if user.currency == 'AUD' %}selected{% endif %}>AUD - Australian Dollar</option>
-                        <option value="CAD" {% if user.currency == 'CAD' %}selected{% endif %}>CAD - Canadian Dollar</option>
-                        <option value="CHF" {% if user.currency == 'CHF' %}selected{% endif %}>CHF - Swiss Franc</option>
-                        <option value="CNY" {% if user.currency == 'CNY' %}selected{% endif %}>CNY - Chinese Yuan</option>
-                        <option value="INR" {% if user.currency == 'INR' %}selected{% endif %}>INR - Indian Rupee</option>
+                    <label for="monthlyBudget" class="block text-sm font-medium text-gray-700">Monthly Budget</label>
+                    <div class="mt-1 relative rounded-md shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <span class="text-gray-500 sm:text-sm">{{ user.get_currency_symbol() }}</span>
+                        </div>
+                        <input type="number" step="0.01" id="monthlyBudget" name="monthly_budget"
+                            value="{{ user.monthly_budget }}"
+                            class="mt-1 block w-full pl-7 pr-12 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label for="currency" class="block text-sm font-medium text-gray-700">Currency</label>
+                    <select id="currency" name="currency"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        {% for code, symbol in currencies.items() %}
+                        <option value="{{ code }}" {% if user.currency == code %}selected{% endif %}>
+                            {{ code }} ({{ symbol }})
+                        </option>
+                        {% endfor %}
                     </select>
                 </div>
-                <button type="submit" class="button-primary">
-                    Update Currency
-                </button>
+                <div class="flex justify-end">
+                    <button type="submit"
+                        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Save Changes
+                    </button>
+                </div>
             </form>
         </div>
 
-        <!-- Password Change -->
-        <div class="card p-8">
-            <h2 class="text-2xl font-semibold mb-6">Change Password</h2>
-            <form method="POST" action="{{ url_for('views.change_password') }}" class="space-y-6">
-                <div>
-                    <label class="block text-sm font-medium mb-2 text-gray-400" for="currentPassword">Current Password</label>
-                    <input type="password" id="currentPassword" name="currentPassword" required
-                        class="input-field w-full"
-                        placeholder="Enter current password">
+        <!-- Notification Settings -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Notification Preferences</h2>
+            <form id="notificationForm" class="space-y-4">
+                <div class="space-y-2">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="emailNotifications" name="email_notifications"
+                            {% if user.get_notification_preferences().get('email_notifications', true) %}checked{% endif %}
+                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <label for="emailNotifications" class="ml-2 block text-sm text-gray-700">
+                            Email Notifications
+                        </label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="budgetAlerts" name="budget_alerts"
+                            {% if user.get_notification_preferences().get('budget_alerts', true) %}checked{% endif %}
+                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <label for="budgetAlerts" class="ml-2 block text-sm text-gray-700">
+                            Budget Alerts
+                        </label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="monthlyReport" name="monthly_report"
+                            {% if user.monthly_report %}checked{% endif %}
+                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <label for="monthlyReport" class="ml-2 block text-sm text-gray-700">
+                            Monthly Report
+                        </label>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-2 text-gray-400" for="newPassword">New Password</label>
-                    <input type="password" id="newPassword" name="newPassword" required
-                        class="input-field w-full"
-                        placeholder="Enter new password">
+                <div class="flex justify-end">
+                    <button type="submit"
+                        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Save Changes
+                    </button>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-2 text-gray-400" for="confirmPassword">Confirm New Password</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" required
-                        class="input-field w-full"
-                        placeholder="Confirm new password">
-                </div>
-                <button type="submit" class="button-primary">
-                    Change Password
-                </button>
             </form>
         </div>
 
-        <!-- Delete Account -->
-        <div class="card p-8 border border-red-500/20">
-            <h2 class="text-2xl font-semibold mb-6 text-red-500">Delete Account</h2>
-            <p class="text-gray-400 mb-6">
-                Warning: This action cannot be undone. All your data will be permanently deleted.
-            </p>
-            <form method="POST" action="{{ url_for('views.delete_account') }}" class="space-y-6"
-                onsubmit="return confirm('Are you sure you want to delete your account? This action cannot be undone.')">
+        <!-- Data Management -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Data Management</h2>
+            <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium mb-2 text-gray-400" for="confirmDelete">Type "DELETE" to confirm</label>
-                    <input type="text" id="confirmDelete" name="confirmDelete" required
-                        class="input-field w-full"
-                        pattern="DELETE"
-                        placeholder='Type "DELETE" to confirm'>
+                    <h3 class="text-lg font-medium text-gray-900">Export Data</h3>
+                    <p class="mt-1 text-sm text-gray-500">Download your expense data in different formats</p>
+                    <div class="mt-4 flex space-x-4">
+                        <button onclick="exportData('csv')"
+                            class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Export as CSV
+                        </button>
+                        <button onclick="exportData('pdf')"
+                            class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Export as PDF
+                        </button>
+                    </div>
                 </div>
-                <button type="submit" class="px-6 py-2 bg-red-500/10 text-red-500 rounded-full hover:bg-red-500/20 transition-colors">
-                    Delete Account
-                </button>
-            </form>
+                <div class="pt-4 border-t border-gray-200">
+                    <h3 class="text-lg font-medium text-red-600">Danger Zone</h3>
+                    <p class="mt-1 text-sm text-gray-500">Permanently delete your account and all associated data</p>
+                    <div class="mt-4">
+                        <button onclick="confirmDeleteAccount()"
+                            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                            Delete Account
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Profile form submission
+    document.getElementById('profileForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+
+        showLoading();
+        fetch('/update-profile', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            hideLoading();
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            alert('Profile updated successfully');
+        })
+        .catch(handleAjaxError);
+    });
+
+    // Budget form submission
+    document.getElementById('budgetForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+
+        showLoading();
+        fetch('/update-settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            hideLoading();
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            alert('Budget settings updated successfully');
+        })
+        .catch(handleAjaxError);
+    });
+
+    // Notification form submission
+    document.getElementById('notificationForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const data = {
+            notification_preferences: {
+                email_notifications: formData.get('email_notifications') === 'on',
+                budget_alerts: formData.get('budget_alerts') === 'on'
+            },
+            monthly_report: formData.get('monthly_report') === 'on'
+        };
+
+        showLoading();
+        fetch('/update-settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            hideLoading();
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            alert('Notification preferences updated successfully');
+        })
+        .catch(handleAjaxError);
+    });
+
+    // Export data
+    function exportData(format) {
+        showLoading();
+        fetch('/get-expenses')
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (format === 'csv') {
+                    exportToCSV(data.expenses);
+                } else if (format === 'pdf') {
+                    exportToPDF(data.expenses);
+                }
+            })
+            .catch(handleAjaxError);
+    }
+
+    // Delete account confirmation
+    function confirmDeleteAccount() {
+        if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+            showLoading();
+            fetch('/delete-account', {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(result => {
+                hideLoading();
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                window.location.href = '/logout';
+            })
+            .catch(handleAjaxError);
+        }
+    }
+</script>
 {% endblock %} 
