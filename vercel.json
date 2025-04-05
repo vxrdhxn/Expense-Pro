@@ -14,6 +14,7 @@
     ],
     "env": {
         "FLASK_APP": "website/__init__.py",
-        "FLASK_ENV": "production"
+        "FLASK_ENV": "production",
+        "MONGODB_URI": "@mongodb_uri"
     }
 } 

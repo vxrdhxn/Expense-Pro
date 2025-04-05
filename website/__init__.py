@@ -1,38 +1,26 @@
 from flask import Flask, jsonify, render_template, flash
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from datetime import datetime
 import os
 import sys
 import traceback
 from dotenv import load_dotenv
-from os import path
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
 
 load_dotenv()
 
-db = SQLAlchemy()
-DB_NAME = "/tmp/database.db"  # Use /tmp for Vercel
+# MongoDB setup
+MONGO_URI = os.getenv('MONGODB_URI', 'mongodb+srv://your-mongodb-uri')
+client = MongoClient(MONGO_URI)
+db = client.get_database('expensepro')
 
 def create_app():
     app = Flask(__name__)
     
     # Basic configuration
     app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev')
-    
-    # Configure static files for serverless
     app.config['STATIC_FOLDER'] = None  # Disable automatic static serving
-    
-    # Database configuration for SQLite in serverless
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'connect_args': {
-            'timeout': 30  # Increase SQLite timeout
-        }
-    }
-    
-    # Initialize extensions
-    db.init_app(app)
     
     # Health check endpoint
     @app.route('/health')
@@ -46,28 +34,17 @@ def create_app():
         
         # Check database
         try:
-            # Ensure database exists
-            if not path.exists(DB_NAME):
-                with app.app_context():
-                    db.create_all()
-                    print('Created Database!')
-            
-            db.session.execute('SELECT 1')
-            db.session.commit()
+            # MongoDB ping
+            client.admin.command('ping')
             status['checks']['database'] = 'connected'
-        except Exception as e:
+        except ConnectionFailure as e:
             print(f"Health check - Database failed: {str(e)}", file=sys.stderr)
             status['checks']['database'] = 'disconnected'
             status['status'] = 'unhealthy'
-            
-            # Try to recreate database if it doesn't exist
-            try:
-                if not path.exists(DB_NAME):
-                    with app.app_context():
-                        db.create_all()
-                        print('Recreated Database!')
-            except Exception as db_error:
-                print(f"Failed to recreate database: {str(db_error)}", file=sys.stderr)
+        except Exception as e:
+            print(f"Health check - Unexpected error: {str(e)}", file=sys.stderr)
+            status['checks']['database'] = 'error'
+            status['status'] = 'unhealthy'
         
         return jsonify(status), 200 if status['status'] == 'healthy' else 500
     
@@ -80,17 +57,8 @@ def create_app():
     app.register_blueprint(auth, url_prefix='/')
     app.register_blueprint(settings, url_prefix='/')
     
-    # Import models
-    from .models import User, Expense
-    
-    # Create database
-    with app.app_context():
-        try:
-            if not path.exists(DB_NAME):
-                db.create_all()
-                print('Created Database!')
-        except Exception as e:
-            print(f"Error creating database: {str(e)}", file=sys.stderr)
+    # Import models (for MongoDB, these will be schema definitions)
+    from .models import User
     
     # Setup login manager
     login_manager = LoginManager()
@@ -98,11 +66,14 @@ def create_app():
     login_manager.init_app(app)
     
     @login_manager.user_loader
-    def load_user(id):
+    def load_user(user_id):
         try:
-            return User.query.get(int(id))
+            user_data = db.users.find_one({'_id': user_id})
+            if user_data:
+                return User.from_db(user_data)
+            return None
         except Exception as e:
-            print(f"Error loading user {id}: {str(e)}", file=sys.stderr)
+            print(f"Error loading user {user_id}: {str(e)}", file=sys.stderr)
             print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
             return None
     
@@ -120,11 +91,6 @@ def create_app():
         print(f"500 error occurred: {str(error)}", file=sys.stderr)
         print(f"Error type: {type(error).__name__}", file=sys.stderr)
         print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
-        
-        try:
-            db.session.rollback()
-        except Exception as e:
-            print(f"Error during session rollback: {str(e)}", file=sys.stderr)
         
         try:
             user = current_user if current_user.is_authenticated else None
