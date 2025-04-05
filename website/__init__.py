@@ -11,7 +11,7 @@ from os import path
 load_dotenv()
 
 db = SQLAlchemy()
-DB_NAME = "database.db"
+DB_NAME = "/tmp/database.db"  # Use /tmp for Vercel
 
 def create_app():
     app = Flask(__name__)
@@ -22,9 +22,14 @@ def create_app():
     # Configure static files for serverless
     app.config['STATIC_FOLDER'] = None  # Disable automatic static serving
     
-    # Database configuration
+    # Database configuration for SQLite in serverless
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'connect_args': {
+            'timeout': 30  # Increase SQLite timeout
+        }
+    }
     
     # Initialize extensions
     db.init_app(app)
@@ -41,6 +46,12 @@ def create_app():
         
         # Check database
         try:
+            # Ensure database exists
+            if not path.exists(DB_NAME):
+                with app.app_context():
+                    db.create_all()
+                    print('Created Database!')
+            
             db.session.execute('SELECT 1')
             db.session.commit()
             status['checks']['database'] = 'connected'
@@ -48,6 +59,15 @@ def create_app():
             print(f"Health check - Database failed: {str(e)}", file=sys.stderr)
             status['checks']['database'] = 'disconnected'
             status['status'] = 'unhealthy'
+            
+            # Try to recreate database if it doesn't exist
+            try:
+                if not path.exists(DB_NAME):
+                    with app.app_context():
+                        db.create_all()
+                        print('Recreated Database!')
+            except Exception as db_error:
+                print(f"Failed to recreate database: {str(db_error)}", file=sys.stderr)
         
         return jsonify(status), 200 if status['status'] == 'healthy' else 500
     
@@ -64,7 +84,13 @@ def create_app():
     from .models import User, Expense
     
     # Create database
-    create_database(app)
+    with app.app_context():
+        try:
+            if not path.exists(DB_NAME):
+                db.create_all()
+                print('Created Database!')
+        except Exception as e:
+            print(f"Error creating database: {str(e)}", file=sys.stderr)
     
     # Setup login manager
     login_manager = LoginManager()
@@ -125,9 +151,3 @@ def create_app():
         return '', 204  # Return no content
         
     return app
-
-def create_database(app):
-    if not path.exists('website/' + DB_NAME):
-        with app.app_context():
-            db.create_all()
-            print('Created Database!')
