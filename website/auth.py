@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_user, login_required, logout_user, current_user
+from flask_cors import cross_origin
 from .models import User
 from . import db
 import re
@@ -167,27 +168,61 @@ def logout():
     return redirect(url_for('views.index'))
 
 @auth.route('/check-email', methods=['POST'])
+@cross_origin()
 def check_email():
     try:
-        data = request.get_json()
+        # Get JSON data and log request details
+        print("Received check-email request", file=sys.stderr)
+        print(f"Request headers: {dict(request.headers)}", file=sys.stderr)
+        print(f"Request method: {request.method}", file=sys.stderr)
+        
+        try:
+            data = request.get_json()
+            print(f"Request data: {data}", file=sys.stderr)
+        except Exception as e:
+            print(f"Error parsing JSON: {str(e)}", file=sys.stderr)
+            return jsonify({'error': 'Invalid JSON data'}), 400
         
         if not data or 'email' not in data:
+            print("No email provided in request", file=sys.stderr)
             return jsonify({'error': 'No email provided'}), 400
             
-        email = data['email']
+        email = data['email'].strip()
         
+        if not email:
+            print("Empty email provided", file=sys.stderr)
+            return jsonify({'error': 'Email cannot be empty'}), 400
+            
         if not is_valid_email(email):
+            print(f"Invalid email format: {email}", file=sys.stderr)
             return jsonify({'error': 'Invalid email format'}), 400
             
-        # Add a small delay to prevent brute force attempts
-        time.sleep(0.1)
-        
-        user = User.query.filter_by(email=email).first()
-        return jsonify({'exists': user is not None})
-        
+        try:
+            # Test database connection first
+            db.session.execute('SELECT 1')
+            db.session.commit()
+            
+            # Check if email exists in database
+            user = User.query.filter_by(email=email).first()
+            exists = user is not None
+            print(f"Email check result for {email}: exists={exists}", file=sys.stderr)
+            
+            response = jsonify({'exists': exists})
+            return response
+            
+        except OperationalError as e:
+            print(f"Database connection error in check_email: {str(e)}", file=sys.stderr)
+            db.session.rollback()
+            return jsonify({'error': 'Database connection error'}), 503
+        except SQLAlchemyError as e:
+            print(f"Database error in check_email: {str(e)}", file=sys.stderr)
+            db.session.rollback()
+            return jsonify({'error': 'Database error occurred'}), 500
+            
     except Exception as e:
-        print(f"Error in check_email: {str(e)}", file=sys.stderr)
-        return jsonify({'error': 'An error occurred while checking email'}), 500
+        print(f"Unexpected error in check_email: {str(e)}", file=sys.stderr)
+        print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
+        return jsonify({'error': 'An unexpected error occurred'}), 500
 
 
 

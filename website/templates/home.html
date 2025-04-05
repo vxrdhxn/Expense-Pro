@@ -2,7 +2,25 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="container mx-auto px-4 py-8">
+    <!-- Currency Selection -->
+    <div class="mb-8 flex justify-end">
+        <div class="relative">
+            <select id="currencySelector" class="block appearance-none w-full bg-white border border-gray-300 hover:border-gray-400 px-4 py-2 pr-8 rounded shadow leading-tight focus:outline-none focus:shadow-outline">
+                {% for code, symbol in currencies.items() %}
+                <option value="{{ code }}" {% if user.preferred_currency == code %}selected{% endif %}>
+                    {{ code }} ({{ symbol }})
+                </option>
+                {% endfor %}
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
     <!-- Welcome Section -->
     <div class="text-center mb-12">
         <h1 class="text-4xl font-semibold tracking-tight mb-4">Welcome, {{ user.first_name }}!</h1>
@@ -24,164 +42,424 @@
 
     <!-- Stats Grid -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <!-- Total Expenses -->
-        <div class="stat-card p-6">
-            <h3 class="text-sm font-medium text-gray-400 mb-2">Total Expenses</h3>
-            <p class="text-2xl font-semibold">{{ user.get_currency_symbol() }}{{ "%.2f"|format(total_expenses) }}</p>
-            <div class="mt-2">
-                <span class="text-sm text-gray-400">This Month</span>
-            </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">Total Expenses</h3>
+            <p class="text-3xl font-bold text-indigo-600" id="totalExpenses">Loading...</p>
+            <p class="text-sm text-gray-500" id="expenseCount">Loading...</p>
         </div>
-
-        <!-- Average Expense -->
-        <div class="stat-card p-6">
-            <h3 class="text-sm font-medium text-gray-400 mb-2">Average Expense</h3>
-            <p class="text-2xl font-semibold">{{ user.get_currency_symbol() }}{{ "%.2f"|format(average_expense) }}</p>
-            <div class="mt-2">
-                <span class="text-sm text-gray-400">Per Transaction</span>
-            </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">Average Expense</h3>
+            <p class="text-3xl font-bold text-indigo-600" id="averageExpense">Loading...</p>
+            <p class="text-sm text-gray-500">Per transaction</p>
         </div>
-
-        <!-- Expense Count -->
-        <div class="stat-card p-6">
-            <h3 class="text-sm font-medium text-gray-400 mb-2">Total Transactions</h3>
-            <p class="text-2xl font-semibold">{{ total_transactions }}</p>
-            <div class="mt-2">
-                <span class="text-sm text-gray-400">This Month</span>
-            </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">Monthly Budget</h3>
+            <p class="text-3xl font-bold text-indigo-600" id="monthlyTotal">Loading...</p>
+            <p class="text-sm text-gray-500" id="monthProgress">Loading...</p>
         </div>
     </div>
 
     <!-- Add Expense Form -->
-    <div class="card p-8 mb-8">
-        <h2 class="text-xl font-semibold mb-6">Add New Expense</h2>
-        <form method="POST" action="{{ url_for('views.add_expense') }}" id="expenseForm" class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm font-medium mb-2 text-gray-400" for="amount">Amount</label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">{{ user.get_currency_symbol() }}</span>
-                        <input type="number" id="amount" name="amount" required step="0.01" min="0.01"
-                            class="input-field w-full pl-8"
-                            placeholder="0.00">
+    <div class="bg-white rounded-lg shadow mb-8">
+        <div class="p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Add New Expense</h2>
+            <form id="expenseForm" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Amount</label>
+                        <div class="mt-1 relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="text-gray-500 sm:text-sm" id="currencySymbol">$</span>
+                            </div>
+                            <input type="number" step="0.01" name="amount" required
+                                class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 pr-12 sm:text-sm border-gray-300 rounded-md"
+                                placeholder="0.00">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Currency</label>
+                        <select name="currency" required
+                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            {% for code, symbol in currencies.items() %}
+                            <option value="{{ code }}" {% if user.preferred_currency == code %}selected{% endif %}>
+                                {{ code }} ({{ symbol }})
+                            </option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-2 text-gray-400" for="category">Category</label>
-                    <select id="category" name="category" required
-                        class="input-field w-full">
+                    <label class="block text-sm font-medium text-gray-700">Description</label>
+                    <input type="text" name="description" required
+                        class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Category</label>
+                    <select name="category" required
+                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
                         <option value="">Select a category</option>
-                        <option value="food">Food & Dining</option>
-                        <option value="transportation">Transportation</option>
-                        <option value="utilities">Utilities</option>
-                        <option value="entertainment">Entertainment</option>
-                        <option value="shopping">Shopping</option>
-                        <option value="health">Health</option>
-                        <option value="travel">Travel</option>
-                        <option value="other">Other</option>
+                        <option value="Food">Food</option>
+                        <option value="Transportation">Transportation</option>
+                        <option value="Housing">Housing</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="Healthcare">Healthcare</option>
+                        <option value="Education">Education</option>
+                        <option value="Travel">Travel</option>
+                        <option value="Other">Other</option>
                     </select>
                 </div>
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-2 text-gray-400" for="description">Description</label>
-                <input type="text" id="description" name="description" required
-                    class="input-field w-full"
-                    placeholder="Enter expense description">
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-2 text-gray-400" for="date">Date</label>
-                <input type="date" id="date" name="date" required
-                    class="input-field w-full"
-                    value="{{ today_date }}">
-            </div>
-            <button type="submit" class="button-primary w-full">
-                Add Expense
-            </button>
-        </form>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Date</label>
+                    <input type="date" name="date"
+                        class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit"
+                        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Add Expense
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Recent Expenses -->
-    <div class="card p-8">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-semibold">Recent Expenses</h2>
-            <a href="{{ url_for('views.expenses') }}" class="button-primary text-sm">
-                View All
-            </a>
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Recent Expenses</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Date
+                            </th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Description
+                            </th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Category
+                            </th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Amount
+                            </th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="expensesList" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">Loading expenses...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-        
-        {% if expenses %}
-            <div class="space-y-4">
-                {% for expense in expenses %}
-                    <div class="flex items-center justify-between p-4 rounded-lg bg-opacity-50 hover:bg-opacity-75 transition-colors duration-200">
-                        <div class="flex items-center space-x-4">
-                            <div class="flex-shrink-0">
-                                <div class="w-10 h-10 rounded-full bg-accent-color bg-opacity-10 flex items-center justify-center">
-                                    <i class="fas fa-{% if expense.category == 'food' %}utensils{% elif expense.category == 'transportation' %}car{% elif expense.category == 'utilities' %}bolt{% elif expense.category == 'entertainment' %}film{% elif expense.category == 'shopping' %}shopping-cart{% elif expense.category == 'health' %}heartbeat{% elif expense.category == 'travel' %}plane{% else %}tag{% endif %} text-accent-color"></i>
-                                </div>
-                            </div>
-                            <div>
-                                <h3 class="font-medium">{{ expense.description }}</h3>
-                                <p class="text-sm text-gray-400">{{ expense.category|title }}</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <p class="font-medium">{{ user.get_currency_symbol() }}{{ expense.formatted_amount }}</p>
-                            <p class="text-sm text-gray-400">{{ expense.date.strftime('%b %d, %Y') }}</p>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="text-center py-8">
-                <div class="mb-4">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                    </svg>
-                </div>
-                <h3 class="text-lg font-medium text-gray-400 mb-1">No expenses yet</h3>
-                <p class="text-gray-400">Start by adding your first expense above</p>
-            </div>
-        {% endif %}
     </div>
 </div>
 
-{% block javascript %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('expenseForm');
-    const amountInput = document.getElementById('amount');
-    
-    // Format amount input
-    amountInput.addEventListener('input', function(e) {
-        let value = e.target.value;
-        
-        // Remove any characters that aren't numbers or decimal points
-        value = value.replace(/[^\d.]/g, '');
-        
-        // Ensure only one decimal point
-        const parts = value.split('.');
-        if (parts.length > 2) {
-            value = parts[0] + '.' + parts.slice(1).join('');
-        }
-        
-        // Limit to two decimal places
-        if (parts.length > 1) {
-            value = parts[0] + '.' + parts[1].slice(0, 2);
-        }
-        
-        e.target.value = value;
-    });
-    
-    // Form submission handler
-    form.addEventListener('submit', function(e) {
-        const amount = parseFloat(amountInput.value);
-        if (isNaN(amount) || amount <= 0) {
-            e.preventDefault();
-            alert('Please enter a valid amount greater than 0');
-            return;
-        }
-    });
-});
-</script>
+<!-- Edit Expense Modal -->
+<div id="editExpenseModal" class="hidden fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog"
+    aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div
+            class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Edit Expense</h3>
+                <form id="editExpenseForm" class="mt-4 space-y-4">
+                    <input type="hidden" name="expenseId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Amount</label>
+                            <div class="mt-1 relative rounded-md shadow-sm">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 sm:text-sm" id="editCurrencySymbol">$</span>
+                                </div>
+                                <input type="number" step="0.01" name="amount" required
+                                    class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 pr-12 sm:text-sm border-gray-300 rounded-md"
+                                    placeholder="0.00">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Currency</label>
+                            <select name="currency" required
+                                class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                {% for code, symbol in currencies.items() %}
+                                <option value="{{ code }}">{{ code }} ({{ symbol }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Description</label>
+                        <input type="text" name="description" required
+                            class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Category</label>
+                        <select name="category" required
+                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option value="Food">Food</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Housing">Housing</option>
+                            <option value="Utilities">Utilities</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Healthcare">Healthcare</option>
+                            <option value="Education">Education</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Date</label>
+                        <input type="date" name="date"
+                            class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                    </div>
+                </form>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button type="button" id="saveExpenseButton"
+                    class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
+                    Save Changes
+                </button>
+                <button type="button" id="closeModalButton"
+                    class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
+
+{% block scripts %}
+<script>
+    let currentCurrency = '{{ user.preferred_currency }}';
+    const modal = document.getElementById('editExpenseModal');
+    const editForm = document.getElementById('editExpenseForm');
+    const closeModalButton = document.getElementById('closeModalButton');
+    const saveExpenseButton = document.getElementById('saveExpenseButton');
+    let currentExpenseId = null;
+
+    // Update currency symbol when currency is changed
+    document.querySelectorAll('select[name="currency"]').forEach(select => {
+        select.addEventListener('change', function() {
+            const symbol = this.options[this.selectedIndex].textContent.match(/\((.*?)\)/)[1];
+            const symbolSpan = this.closest('form').querySelector('.text-gray-500.sm\\:text-sm');
+            if (symbolSpan) symbolSpan.textContent = symbol;
+        });
+    });
+
+    // Currency selector change handler
+    document.getElementById('currencySelector').addEventListener('change', function() {
+        currentCurrency = this.value;
+        // Update user's preferred currency
+        fetch('/update-settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                preferred_currency: currentCurrency
+            })
+        })
+        .then(response => response.json())
+        .then(() => {
+            // Refresh expenses and stats
+            loadExpenses();
+            loadStats();
+        })
+        .catch(error => console.error('Error updating currency:', error));
+    });
+
+    // Load expenses from the server
+    function loadExpenses() {
+        fetch(`/get-expenses?currency=${currentCurrency}`)
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('expensesList');
+                tbody.innerHTML = '';
+
+                if (data.expenses.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                No expenses found
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                data.expenses.forEach(expense => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${new Date(expense.date).toLocaleDateString()}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${expense.description}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${expense.category}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${expense.formatted_amount}
+                            ${expense.converted_amount ? `
+                                <br>
+                                <span class="text-xs text-gray-500">
+                                    ${expense.formatted_converted_amount}
+                                </span>
+                            ` : ''}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="editExpense(${expense.id})" class="text-indigo-600 hover:text-indigo-900 mr-3">
+                                Edit
+                            </button>
+                            <button onclick="deleteExpense(${expense.id})" class="text-red-600 hover:text-red-900">
+                                Delete
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            })
+            .catch(error => console.error('Error loading expenses:', error));
+    }
+
+    // Load statistics from the server
+    function loadStats() {
+        fetch(`/get-stats?currency=${currentCurrency}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('totalExpenses').textContent = data.yearly.formatted_total;
+                document.getElementById('expenseCount').textContent = `${data.yearly.count} transactions this year`;
+                document.getElementById('averageExpense').textContent = data.yearly.formatted_average;
+                document.getElementById('monthlyTotal').textContent = data.monthly.formatted_total;
+                document.getElementById('monthProgress').textContent = `${data.monthly.count} transactions this month`;
+            })
+            .catch(error => console.error('Error loading stats:', error));
+    }
+
+    // Handle expense form submission
+    document.getElementById('expenseForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+        
+        fetch('/add-expense', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            this.reset();
+            loadExpenses();
+            loadStats();
+        })
+        .catch(error => {
+            console.error('Error adding expense:', error);
+            alert(error.message);
+        });
+    });
+
+    // Edit expense function
+    function editExpense(id) {
+        currentExpenseId = id;
+        fetch(`/get-expenses?currency=${currentCurrency}`)
+            .then(response => response.json())
+            .then(data => {
+                const expense = data.expenses.find(e => e.id === id);
+                if (expense) {
+                    editForm.elements.amount.value = expense.amount;
+                    editForm.elements.currency.value = expense.currency;
+                    editForm.elements.description.value = expense.description;
+                    editForm.elements.category.value = expense.category;
+                    editForm.elements.date.value = new Date(expense.date).toISOString().split('T')[0];
+                    modal.classList.remove('hidden');
+                }
+            })
+            .catch(error => console.error('Error loading expense:', error));
+    }
+
+    // Save edited expense
+    saveExpenseButton.addEventListener('click', function() {
+        const formData = new FormData(editForm);
+        const data = Object.fromEntries(formData.entries());
+        
+        fetch(`/update-expense/${currentExpenseId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            modal.classList.add('hidden');
+            loadExpenses();
+            loadStats();
+        })
+        .catch(error => {
+            console.error('Error updating expense:', error);
+            alert(error.message);
+        });
+    });
+
+    // Delete expense function
+    function deleteExpense(id) {
+        if (confirm('Are you sure you want to delete this expense?')) {
+            fetch(`/delete-expense/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                loadExpenses();
+                loadStats();
+            })
+            .catch(error => {
+                console.error('Error deleting expense:', error);
+                alert(error.message);
+            });
+        }
+    }
+
+    // Close modal handlers
+    closeModalButton.addEventListener('click', () => modal.classList.add('hidden'));
+    window.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+        }
+    });
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', () => {
+        loadExpenses();
+        loadStats();
+    });
+</script>
 {% endblock %}
