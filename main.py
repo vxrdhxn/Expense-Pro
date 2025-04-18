@@ -3,8 +3,9 @@ import os
 
 app = create_app()
 
-# Add this configuration for GitHub Pages
+# GitHub Pages configuration
 app.config['APPLICATION_ROOT'] = '/Expense-Pro'
+app.config['PREFERRED_URL_SCHEME'] = 'https'
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
