@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Monthly Report{% endblock %}
+
+{% block head %}
+<!-- Add in the head block -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<style>
+    .chart-container {
+        position: relative;
+        height: 400px;
+        width: 100%;
+        min-height: 400px;
+    }
+
+    /* Add text color overrides */
+    .text-gray-500, .text-gray-600, .text-gray-900 {
+        color: #E5E7EB !important;
+    }
+
+    .dark\:text-gray-400 {
+        color: #D1D5DB !important;
+    }
+
+    .dark\:text-white {
+        color: #FFFFFF !important;
+    }
+
+    /* Table text colors */
+    th.text-gray-500 {
+        color: #D1D5DB !important;
+    }
+
+    td.text-gray-900 {
+        color: #FFFFFF !important;
+    }
+
+    /* Category badge text */
+    .category-badge {
+        color: #FFFFFF !important;
+    }
+
+    /* Chart text colors */
+    #dailyExpensesChart, #categoryDistributionChart {
+        color: #FFFFFF;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Remove the outer div with white background and just keep the dark gradient -->
+<div class="min-h-screen bg-gradient-to-b from-[#1C1C1E] to-[#2C2C2E] dark:from-gray-900 dark:to-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
+         id="chartContainer"
+         data-daily-labels="{{ daily_labels|tojson|safe }}"
+         data-daily-values="{{ daily_values|tojson|safe }}"
+         data-category-labels="{{ category_labels|tojson|safe }}"
+         data-category-values="{{ category_values|tojson|safe }}"
+         data-currency="{{ user.currency if user.currency else 'USD' }}">
+        
+        <!-- Title and Month Selector -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-12 space-y-6 sm:space-y-0">    
+            <div>
+                <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#007AFF] to-[#5856D6] font-sf-pro-display mb-2">Monthly Report</h1>
+                <p class="text-gray-600 dark:text-gray-400 font-sf-pro-text text-lg">Track and analyze your monthly expenses</p>
+            </div>
+            <div class="flex space-x-4">
+                <form method="GET" class="flex space-x-4">
+                    <select name="month" class="px-4 py-3 rounded-2xl border-0 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007AFF] transition-all font-sf-pro-text appearance-none">
+                        {% for month_num, month_name in months %}
+                            <option value="{{ month_num }}" {% if month_num == selected_month %}selected{% endif %}>{{ month_name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="year" class="px-4 py-3 rounded-2xl border-0 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007AFF] transition-all font-sf-pro-text appearance-none">
+                        {% for year in years %}
+                            <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="bg-[#007AFF] hover:bg-[#0066CC] text-white font-medium px-6 py-3 rounded-2xl transition-colors duration-200 font-sf-pro-text">
+                        Apply
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <!-- Total Expenses -->
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-500 dark:text-gray-400 font-medium text-sm font-sf-pro-text">Total Expenses</h3>
+                    <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <i class="fas fa-wallet text-[#007AFF]"></i>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-gray-900 dark:text-white font-sf-pro-display">{{ user.currency }} {{ "%.2f"|format(total_expenses) }}</p>
+            </div>
+
+            <!-- Average Daily -->
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-500 dark:text-gray-400 font-medium text-sm font-sf-pro-text">Average Daily</h3>
+                    <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                        <i class="fas fa-chart-line text-green-500"></i>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-gray-900 dark:text-white font-sf-pro-display">{{ user.currency }} {{ "%.2f"|format(avg_daily_expense) }}</p>
+            </div>
+
+            <!-- Highest Daily -->
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-500 dark:text-gray-400 font-medium text-sm font-sf-pro-text">Highest Daily</h3>
+                    <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                        <i class="fas fa-arrow-trend-up text-red-500"></i>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-gray-900 dark:text-white font-sf-pro-display">{{ user.currency }} {{ "%.2f"|format(max_daily_expense) }}</p>
+            </div>
+
+            <!-- Total Transactions -->
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-500 dark:text-gray-400 font-medium text-sm font-sf-pro-text">Transactions</h3>
+                    <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                        <i class="fas fa-receipt text-purple-500"></i>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-gray-900 dark:text-white font-sf-pro-display">{{ total_transactions }}</p>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div id="chartContainer"
+             data-daily-labels='{{ daily_labels|tojson|safe }}'
+             data-daily-values='{{ daily_values|tojson|safe }}'
+             data-category-labels='{{ category_labels|tojson|safe }}'
+             data-category-values='{{ category_values|tojson|safe }}'
+             data-currency="{{ user.currency }}">
+            <!-- chart canvases -->
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Daily Expenses Chart -->
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 p-6 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Daily Expenses</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="dailyExpensesChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Category Distribution Chart -->
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 p-6 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Category Distribution</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="categoryDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expense Details Table -->
+        <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+            <div class="p-6 border-b border-gray-200/50 dark:border-gray-700/50">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white font-sf-pro-display">Expense Details</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-sf-pro-text">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-sf-pro-text">Description</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-sf-pro-text">Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-sf-pro-text">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for expense in expenses %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-sf-pro-text">{{ expense.date.strftime('%b %d, %Y') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-sf-pro-text">{{ expense.description }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-sf-pro-text">
+                                {% if expense.category %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium category-badge"
+                                      data-color="{{ expense.category.color }}">
+                                    {% if expense.category.icon %}<i class="fas fa-{{ expense.category.icon }} mr-1"></i>{% endif %}
+                                    {{ expense.category.name }}
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                                    Uncategorized
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-sf-pro-text">{{ user.currency }} {{ "%.2f"|format(expense.amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.querySelector('.max-w-7xl');
+    if (container) {
+        container.dataset.dailyLabels = '{{ daily_labels|tojson|safe }}';
+        container.dataset.dailyValues = '{{ daily_values|tojson|safe }}';
+        container.dataset.categoryLabels = '{{ category_labels|tojson|safe }}';
+        container.dataset.categoryValues = '{{ category_values|tojson|safe }}';
+        container.dataset.currency = '{{ user.currency if user.currency else "USD" }}';
+        
+        initializeCharts(container);
+    }
+});
+</script>
+{% endblock %}

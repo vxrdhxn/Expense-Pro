@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - ExpenseTracker{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div class="max-w-3xl mx-auto">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#007AFF] to-[#5856D6] font-sf-pro-display">Settings</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-2 font-sf-pro-text text-lg">Customize your experience</p>
+        </div>
+
+        <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="mb-4 p-4 rounded-2xl backdrop-blur-sm {% if category == 'error' %}bg-red-500/10 text-red-600 dark:text-red-400{% else %}bg-green-500/10 text-green-600 dark:text-green-400{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="space-y-8 p-8">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div>
+                    <label for="first_name" class="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2 font-sf-pro-text">First Name</label>
+                    <input type="text" name="first_name" id="first_name" value="{{ user.first_name }}"
+                        class="w-full px-4 py-3 rounded-2xl border-0 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007AFF] transition-all font-sf-pro-text"
+                        required>
+                </div>
+
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2 font-sf-pro-text">Email</label>
+                    <input type="email" name="email" id="email" value="{{ user.email }}"
+                        class="w-full px-4 py-3 rounded-2xl border-0 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007AFF] transition-all font-sf-pro-text"
+                        required>
+                </div>
+
+                <div>
+                    <label for="currency" class="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2 font-sf-pro-text">Currency</label>
+                    <select name="currency" id="currency" 
+                        class="w-full px-4 py-3 rounded-2xl border-0 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007AFF] transition-all font-sf-pro-text appearance-none">
+                        <option value="USD" {% if user.currency == 'USD' %}selected{% endif %}>USD ($)</option>
+                        <option value="EUR" {% if user.currency == 'EUR' %}selected{% endif %}>EUR (€)</option>
+                        <option value="GBP" {% if user.currency == 'GBP' %}selected{% endif %}>GBP (£)</option>
+                        <option value="INR" {% if user.currency == 'INR' %}selected{% endif %}>INR (₹)</option>
+                        <option value="JPY" {% if user.currency == 'JPY' %}selected{% endif %}>JPY (¥)</option>
+                        <option value="AUD" {% if user.currency == 'AUD' %}selected{% endif %}>AUD (A$)</option>
+                        <option value="CAD" {% if user.currency == 'CAD' %}selected{% endif %}>CAD (C$)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="monthly_budget" class="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2 font-sf-pro-text">Monthly Budget</label>
+                    <input type="number" name="monthly_budget" id="monthly_budget" value="{{ user.monthly_budget }}"
+                        class="w-full px-4 py-3 rounded-2xl border-0 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007AFF] transition-all font-sf-pro-text"
+                        step="0.01" min="0">
+                </div>
+
+                <div>
+                    <label for="theme" class="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2 font-sf-pro-text">Theme</label>
+                    <select name="theme" id="theme"
+                        class="w-full px-4 py-3 rounded-2xl border-0 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007AFF] transition-all font-sf-pro-text appearance-none">
+                        <option value="light" {% if user.theme == 'light' %}selected{% endif %}>Light</option>
+                        <option value="dark" {% if user.theme == 'dark' %}selected{% endif %}>Dark</option>
+                        <option value="system" {% if user.theme == 'system' %}selected{% endif %}>System Default</option>
+                    </select>
+                </div>
+
+                <div class="border-t border-gray-200/50 dark:border-gray-700/50 pt-8">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6 font-sf-pro-display">Notification Preferences</h2>
+                    <div class="space-y-4">
+                        <div class="flex items-center">
+                            <input type="checkbox" name="email_notifications" id="email_notifications" 
+                                {% if user.email_notifications %}checked{% endif %}
+                                class="h-5 w-5 text-[#007AFF] focus:ring-[#007AFF] border-gray-300 dark:border-gray-600 rounded-lg transition-colors">
+                            <label for="email_notifications" class="ml-3 text-base text-gray-700 dark:text-gray-300 font-sf-pro-text">
+                                Email Notifications
+                            </label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" name="budget_alerts" id="budget_alerts" 
+                                {% if user.budget_alerts %}checked{% endif %}
+                                class="h-5 w-5 text-[#007AFF] focus:ring-[#007AFF] border-gray-300 dark:border-gray-600 rounded-lg transition-colors">
+                            <label for="budget_alerts" class="ml-3 text-base text-gray-700 dark:text-gray-300 font-sf-pro-text">
+                                Budget Alert Notifications
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-200/50 dark:border-gray-700/50 pt-8">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6 font-sf-pro-display">Change Password</h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label for="current_password" class="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2 font-sf-pro-text">Current Password</label>
+                            <input type="password" name="current_password" id="current_password"
+                                class="w-full px-4 py-3 rounded-2xl border-0 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007AFF] transition-all font-sf-pro-text">
+                        </div>
+
+                        <div>
+                            <label for="new_password" class="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2 font-sf-pro-text">New Password</label>
+                            <input type="password" name="new_password" id="new_password"
+                                class="w-full px-4 py-3 rounded-2xl border-0 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007AFF] transition-all font-sf-pro-text">
+                        </div>
+
+                        <div>
+                            <label for="confirm_password" class="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2 font-sf-pro-text">Confirm New Password</label>
+                            <input type="password" name="confirm_password" id="confirm_password"
+                                class="w-full px-4 py-3 rounded-2xl border-0 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007AFF] transition-all font-sf-pro-text">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-8">
+                    <button type="submit" class="w-full bg-[#007AFF] hover:bg-[#0066CC] text-white font-medium py-3 px-6 rounded-2xl transition-colors duration-200 font-sf-pro-text">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
