@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Expenses - ExpenseTracker{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-12 space-y-6 sm:space-y-0">
+            <div>
+                <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#007AFF] to-[#5856D6] font-sf-pro-display mb-2">Your Expenses</h1>
+                <p class="text-gray-600 dark:text-gray-400 font-sf-pro-text text-lg">Track and manage your spending</p>
+            </div>
+            <a href="{{ url_for('views.add_expense') }}" class="bg-[#007AFF] hover:bg-[#0066CC] text-white font-medium px-6 py-3 rounded-2xl transition-colors duration-200 font-sf-pro-text inline-flex items-center space-x-2">
+                <i class="fas fa-plus text-sm"></i>
+                <span>Add Expense</span>
+            </a>
+        </div>
+
+        <!-- Filters -->
+        <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 p-6 rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 mb-12">
+            <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div>
+                    <label for="category" class="block text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text mb-2">Category</label>
+                    <select name="category" id="category" class="w-full px-4 py-3 rounded-2xl border-0 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007AFF] transition-all font-sf-pro-text appearance-none">
+                        <option value="">All Categories</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}" {% if selected_category == category.id %}selected{% endif %}>{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="start_date" class="block text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text mb-2">Start Date</label>
+                    <input type="date" name="start_date" id="start_date" value="{{ start_date }}" class="w-full px-4 py-3 rounded-2xl border-0 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007AFF] transition-all font-sf-pro-text">
+                </div>
+                <div>
+                    <label for="end_date" class="block text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text mb-2">End Date</label>
+                    <input type="date" name="end_date" id="end_date" value="{{ end_date }}" class="w-full px-4 py-3 rounded-2xl border-0 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007AFF] transition-all font-sf-pro-text">
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-[#007AFF] hover:bg-[#0066CC] text-white font-medium px-6 py-3 rounded-2xl transition-colors duration-200 font-sf-pro-text">
+                        Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 p-6 rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text mb-1">Total Expenses</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white font-sf-pro-display tracking-tight">{{ user.currency if user.currency else 'USD' }} {{ "%.2f"|format(total_amount) }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-[#007AFF]/10 dark:bg-[#007AFF]/20 rounded-2xl flex items-center justify-center">
+                        <i class="fas fa-dollar-sign text-[#007AFF] text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 p-6 rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text mb-1">Average Expense</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white font-sf-pro-display tracking-tight">{{ user.currency if user.currency else 'USD' }} {{ "%.2f"|format(average_amount) }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-[#007AFF]/10 dark:bg-[#007AFF]/20 rounded-2xl flex items-center justify-center">
+                        <i class="fas fa-chart-line text-[#007AFF] text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 p-6 rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text mb-1">Number of Expenses</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white font-sf-pro-display tracking-tight">{{ expense_count }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-[#007AFF]/10 dark:bg-[#007AFF]/20 rounded-2xl flex items-center justify-center">
+                        <i class="fas fa-receipt text-[#007AFF] text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expenses Table -->
+        <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="text-left bg-gray-50/50 dark:bg-gray-700/50">
+                            <th class="px-6 py-4 text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text">Date</th>
+                            <th class="px-6 py-4 text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text">Category</th>
+                            <th class="px-6 py-4 text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text">Description</th>
+                            <th class="px-6 py-4 text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text">Amount</th>
+                            <th class="px-6 py-4 text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for expense in expenses %}
+                        <tr class="border-t border-gray-200/50 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
+                            <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-sf-pro-text whitespace-nowrap">{{ expense.date.strftime('%Y-%m-%d') }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-sf-pro-text">{{ expense.category.name }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-sf-pro-text">{{ expense.description }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-sf-pro-text">{{ user.currency if user.currency else 'USD' }} {{ "%.2f"|format(expense.amount) }}</td>
+                            <td class="px-6 py-4 text-sm font-sf-pro-text whitespace-nowrap">
+                                <div class="flex space-x-3">
+                                    <a href="{{ url_for('views.edit_expense', expense_id=expense.id) }}" 
+                                       class="text-[#007AFF] hover:text-[#0066CC] transition-colors">
+                                        Edit
+                                    </a>
+                                    <form action="{{ url_for('views.delete_expense', expense_id=expense.id) }}" method="POST" class="inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="text-red-500 hover:text-red-600 transition-colors" onclick="return confirm('Are you sure you want to delete this expense?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="mt-8 flex justify-center">
+            <nav class="flex space-x-2" aria-label="Pagination">
+                {% if pagination.has_prev %}
+                <a href="{{ url_for('views.expenses', page=pagination.prev_num, category=selected_category, start_date=start_date, end_date=end_date) }}" 
+                   class="inline-flex items-center px-4 py-2 rounded-xl bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white hover:bg-gray-200/50 dark:hover:bg-gray-600/50 transition-colors font-sf-pro-text">
+                    <i class="fas fa-chevron-left mr-2 text-sm"></i>
+                    Previous
+                </a>
+                {% endif %}
+
+                {% if pagination.has_next %}
+                <a href="{{ url_for('views.expenses', page=pagination.next_num, category=selected_category, start_date=start_date, end_date=end_date) }}"
+                   class="inline-flex items-center px-4 py-2 rounded-xl bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white hover:bg-gray-200/50 dark:hover:bg-gray-600/50 transition-colors font-sf-pro-text">
+                    Next
+                    <i class="fas fa-chevron-right ml-2 text-sm"></i>
+                </a>
+                {% endif %}
+            </nav>
+        </div>
+    </div>
+</div>
+{% endblock %}

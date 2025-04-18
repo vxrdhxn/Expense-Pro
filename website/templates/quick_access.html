@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Quick Access{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Quick Add Expense Form -->
+        <div class="glass-card p-6 rounded-2xl h-fit">
+            <h2 class="text-2xl font-bold gradient-text mb-6">Quick Add Expense</h2>
+            <form method="POST" action="{{ url_for('views.add_expense') }}" class="space-y-6">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="space-y-4">
+            <div>
+                <label for="amount" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Amount</label>
+                        <div class="flex space-x-2">
+                            <select id="currency" name="currency" required
+                                class="appearance-none relative block w-24 px-3 py-3 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-apple-blue focus:border-apple-blue focus:z-10 sm:text-sm bg-white dark:bg-gray-700">
+                                {% for code, name in currencies %}
+                                <option value="{{ code }}">{{ code }}</option>
+                                {% endfor %}
+                            </select>
+                            <input type="number" step="0.01" id="amount" name="amount" required
+                                class="appearance-none relative block flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-apple-blue focus:border-apple-blue focus:z-10 sm:text-sm bg-white dark:bg-gray-700"
+                                placeholder="0.00">
+                </div>
+            </div>
+
+            <div>
+                <label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
+                        <select id="category" name="category" required
+                            class="appearance-none relative block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-apple-blue focus:border-apple-blue focus:z-10 sm:text-sm bg-white dark:bg-gray-700">
+                            <option value="" disabled selected>Select a category</option>
+                            <option value="education">Education</option>
+                            <option value="entertainment">Entertainment</option>
+                            <option value="food_dining">Food & Dining</option>
+                            <option value="healthcare">Healthcare</option>
+                            <option value="housing">Housing</option>
+                            <option value="personal_care">Personal Care</option>
+                            <option value="shopping">Shopping</option>
+                            <option value="transportation">Transportation</option>
+                            <option value="travel">Travel</option>
+                            <option value="utilities">Utilities</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
+                        <textarea id="description" name="description" rows="3" required
+                            class="appearance-none relative block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-apple-blue focus:border-apple-blue focus:z-10 sm:text-sm bg-white dark:bg-gray-700"
+                            placeholder="What's this expense for?"></textarea>
+            </div>
+
+            <div>
+                <label for="date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date</label>
+                        <input type="date" id="date" name="date" required
+                            class="appearance-none relative block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-apple-blue focus:border-apple-blue focus:z-10 sm:text-sm bg-white dark:bg-gray-700">
+                    </div>
+            </div>
+
+                <button type="submit" class="apple-button w-full flex justify-center items-center py-3 rounded-xl">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                Add Expense
+            </button>
+        </form>
+    </div>
+
+        <!-- Categories Grid -->
+        <div class="glass-card p-6 rounded-2xl">
+            <h2 class="text-2xl font-bold gradient-text mb-6">Categories</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <button class="p-4 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all flex flex-col items-center justify-center space-y-2 group">
+                    <div class="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-graduation-cap text-xl"></i>
+                    </div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Education</span>
+                </button>
+
+                <button class="p-4 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all flex flex-col items-center justify-center space-y-2 group">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-film text-xl"></i>
+                    </div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Entertainment</span>
+                </button>
+
+                <button class="p-4 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all flex flex-col items-center justify-center space-y-2 group">
+                    <div class="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-utensils text-xl"></i>
+                    </div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Food & Dining</span>
+                </button>
+
+                <button class="p-4 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all flex flex-col items-center justify-center space-y-2 group">
+                    <div class="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-hospital text-xl"></i>
+                    </div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Healthcare</span>
+                </button>
+
+                <button class="p-4 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all flex flex-col items-center justify-center space-y-2 group">
+                    <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-yellow-600 dark:text-yellow-400 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-home text-xl"></i>
+                    </div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Housing</span>
+                </button>
+
+                <button class="p-4 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all flex flex-col items-center justify-center space-y-2 group">
+                    <div class="w-12 h-12 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-heart text-xl"></i>
+                    </div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Personal Care</span>
+                </button>
+
+                <button class="p-4 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all flex flex-col items-center justify-center space-y-2 group">
+                    <div class="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-shopping-bag text-xl"></i>
+                    </div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Shopping</span>
+                </button>
+
+                <button class="p-4 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all flex flex-col items-center justify-center space-y-2 group">
+                    <div class="w-12 h-12 rounded-full bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-car text-xl"></i>
+                    </div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Transportation</span>
+                </button>
+
+                <button class="p-4 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all flex flex-col items-center justify-center space-y-2 group">
+                    <div class="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-plane text-xl"></i>
+                </div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Travel</span>
+                </button>
+
+                <button class="p-4 rounded-xl bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all flex flex-col items-center justify-center space-y-2 group">
+                    <div class="w-12 h-12 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-bolt text-xl"></i>
+                </div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Utilities</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Expenses Section -->
+    <div class="mt-8">
+        <div class="glass-card p-6 rounded-2xl">
+            <h2 class="text-2xl font-bold gradient-text mb-6">Recent Expenses</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for expense in recent_expenses %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{{ expense.date.strftime('%Y-%m-%d') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{{ expense.category.name if expense.category else 'Uncategorized' }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{ expense.description }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700 dark:text-gray-300">
+                                {% if expense.original_currency %}
+                                    {{ expense.original_currency }} {{ "%.2f"|format(expense.amount) }}
+                                {% else %}
+                                    {{ user.currency if user.currency else 'USD' }} {{ "%.2f"|format(expense.amount) }}
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                                <div class="flex justify-end space-x-2">
+                                    <a href="{{ url_for('views.edit_expense', expense_id=expense.id) }}" class="text-apple-blue hover:text-apple-blue/80 transition-colors">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <form action="{{ url_for('views.delete_expense', expense_id=expense.id) }}" method="POST" class="inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="text-red-500 hover:text-red-600 transition-colors" onclick="return confirm('Are you sure you want to delete this expense?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+            {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Set default date to today
+    document.addEventListener('DOMContentLoaded', function() {
+        const dateInput = document.getElementById('date');
+        if (!dateInput.value) {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            dateInput.value = `${year}-${month}-${day}`;
+        }
+    });
+</script>
+{% endblock %} 
