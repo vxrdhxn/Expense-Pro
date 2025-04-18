@@ -38,6 +38,40 @@ def login():
             user = User.query.filter_by(email=form.email.data).first()
             if user and check_password_hash(user.password_hash, form.password.data):
                 login_user(user, remember=form.remember.data)
+                
+                # Check if user has categories, if not, add default ones
+                categories = Category.query.filter_by(user_id=user.id).all()
+                if not categories:
+                    try:
+                        # Default categories
+                        default_categories = [
+                            {'name': 'Food & Dining', 'color': '#FF6B6B', 'icon': 'fas fa-utensils'},
+                            {'name': 'Transportation', 'color': '#4ECDC4', 'icon': 'fas fa-car'},
+                            {'name': 'Shopping', 'color': '#45B7D1', 'icon': 'fas fa-shopping-bag'},
+                            {'name': 'Entertainment', 'color': '#96CEB4', 'icon': 'fas fa-film'},
+                            {'name': 'Housing', 'color': '#FFEEAD', 'icon': 'fas fa-home'},
+                            {'name': 'Utilities', 'color': '#D4A5A5', 'icon': 'fas fa-bolt'},
+                            {'name': 'Healthcare', 'color': '#9B6B6B', 'icon': 'fas fa-medkit'},
+                            {'name': 'Education', 'color': '#A8E6CF', 'icon': 'fas fa-graduation-cap'},
+                            {'name': 'Personal Care', 'color': '#FFB6B9', 'icon': 'fas fa-heart'},
+                            {'name': 'Travel', 'color': '#957DAD', 'icon': 'fas fa-plane'}
+                        ]
+                        
+                        from .models import Category
+                        for cat in default_categories:
+                            new_category = Category(
+                                name=cat['name'],
+                                color=cat['color'],
+                                icon=cat['icon'],
+                                user_id=user.id
+                            )
+                            db.session.add(new_category)
+                        db.session.commit()
+                    except Exception as e:
+                        db.session.rollback()
+                        print(f"Error adding default categories during login: {e}")
+                        # Continue even if categories fail to add
+                
                 flash('Logged in successfully!', 'success')
                 next_page = request.args.get('next')
                 return redirect(next_page if next_page else url_for('views.home'))  # Changed from dashboard to home
