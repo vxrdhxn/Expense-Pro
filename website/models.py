@@ -13,7 +13,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(150), nullable=False)
     first_name = db.Column(db.String(150), nullable=False)
-    currency = db.Column(db.String(3), default='USD', nullable=False)
+    currency = db.Column(db.String(3), default='INR', nullable=False)
     monthly_budget = db.Column(db.Float, default=0.0, nullable=False)
     theme = db.Column(db.String(10), default='light', nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

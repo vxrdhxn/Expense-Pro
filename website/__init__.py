@@ -46,7 +46,8 @@ def create_app():
                 default_user = User(
                     email='admin@example.com',
                     first_name='Admin',
-                    password_hash=generate_password_hash('Admin123!', method='pbkdf2:sha256')
+                    password_hash=generate_password_hash('Admin123!', method='pbkdf2:sha256'),
+                    currency='INR'
                 )
                 db.session.add(default_user)
                 db.session.commit()
