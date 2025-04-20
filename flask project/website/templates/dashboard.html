@@ -1,0 +1,518 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - ExpenseTracker{% endblock %}
+
+{% block styles %}
+<style>
+    /* CSS Variables */
+    :root {
+        --budget-progress: calc({{ budget_progress|default(0) }}%);
+        --category-color: #000000;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 250px; /* Reduced from 300px */
+        width: 100%;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        margin-bottom: 0; /* Remove any bottom margin */
+        padding-bottom: 0; /* Remove any bottom padding */
+    }
+
+    /* Add responsive height adjustments */
+    @media (min-width: 768px) {
+        .chart-container {
+            height: 300px;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .chart-container {
+            height: 350px;
+        }
+    }
+
+    .chart-container.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .progress-bar-container {
+        width: 100%;
+        height: 6px;
+        background-color: rgba(0, 122, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background-color: #007AFF;
+        border-radius: 3px;
+        transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+        width: 0;
+    }
+
+    .progress-bar.animated {
+        width: var(--budget-progress);
+    }
+
+    .trend-indicator {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-weight: 500;
+        font-size: 0.875rem;
+        transition: all 0.3s ease;
+    }
+
+    .trend-up {
+        background-color: rgba(255, 59, 48, 0.1);
+        color: rgb(255, 59, 48);
+    }
+
+    .trend-down {
+        background-color: rgba(52, 199, 89, 0.1);
+        color: rgb(52, 199, 89);
+    }
+
+    .stat-card {
+        transform: translateY(20px);
+        opacity: 0;
+        transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .stat-card.visible {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    .stat-card:nth-child(1) { transition-delay: 0.1s; }
+    .stat-card:nth-child(2) { transition-delay: 0.2s; }
+    .stat-card:nth-child(3) { transition-delay: 0.3s; }
+    .stat-card:nth-child(4) { transition-delay: 0.4s; }
+
+    .category-badge {
+        background-color: rgba(var(--category-color), 0.1);
+        color: rgb(var(--category-color));
+    }
+
+    /* Add/Update text color styles */
+    h1, h2, h3, h4, h5, h6 {
+        color: #FFFFFF;
+    }
+
+    p, span, td, th {
+        color: #E5E7EB;
+    }
+
+    .text-gray-500 {
+        color: #9CA3AF;
+    }
+
+    .text-gray-600 {
+        color: #D1D5DB;
+    }
+
+    .text-gray-900 {
+        color: #FFFFFF;
+    }
+
+    .dark:text-gray-400 {
+        color: #9CA3AF;
+    }
+
+    .dark:text-white {
+        color: #FFFFFF;
+    }
+
+    /* Update table styles */
+    thead th {
+        color: #9CA3AF !important;
+    }
+
+    tbody td {
+        color: #E5E7EB !important;
+    }
+
+    /* Update category badges */
+    .category-badge {
+        color: #FFFFFF;
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Chart legend colors */
+    .chartjs-legend {
+        color: #E5E7EB;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-12 space-y-6 sm:space-y-0">
+            <div>
+                <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#007AFF] to-[#5856D6] font-sf-pro-display mb-2">Dashboard</h1>
+                <p class="text-gray-600 dark:text-gray-400 font-sf-pro-text text-lg">Your financial overview</p>
+            </div>
+            <a href="{{ url_for('views.add_expense') }}" class="bg-[#007AFF] hover:bg-[#0066CC] text-white font-medium px-6 py-3 rounded-2xl transition-colors duration-200 font-sf-pro-text inline-flex items-center space-x-2">
+                <i class="fas fa-plus text-sm"></i>
+                <span>Add Expense</span>
+            </a>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <!-- Monthly Spending -->
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6 stat-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-500 dark:text-gray-400 font-medium text-sm font-sf-pro-text">Monthly Spending</h3>
+                    <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <i class="fas fa-calendar text-[#007AFF] dark:text-[#0A84FF]"></i>
+                    </div>
+                </div>
+                <div class="flex items-end justify-between">
+                    <div>
+                        <p class="text-3xl font-bold text-gray-900 dark:text-white font-sf-pro-display">{{ user.currency }} {{ "%.2f"|format(current_month_expenses) }}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 font-sf-pro-text">This month</p>
+                    </div>
+                    {% if monthly_trend > 0 %}
+                    <div class="trend-indicator trend-up">
+                        <i class="fas fa-arrow-up mr-1"></i> {{ "%.1f"|format(monthly_trend) }}%
+                    </div>
+                    {% else %}
+                    <div class="trend-indicator trend-down">
+                        <i class="fas fa-arrow-down mr-1"></i> {{ "%.1f"|format(monthly_trend|abs) }}%
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Budget Progress -->
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6 stat-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-500 dark:text-gray-400 font-medium text-sm font-sf-pro-text">Budget Progress</h3>
+                    <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                        <i class="fas fa-chart-pie text-[#5856D6] dark:text-[#5E5CE6]"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-3xl font-bold text-gray-900 dark:text-white font-sf-pro-display">{{ budget_progress }}%</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 font-sf-pro-text">{{ user.currency }} {{ "%.2f"|format(current_month_expenses) }} / {{ user.currency }} {{ "%.2f"|format(user.monthly_budget) }}</p>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Expenses -->
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6 stat-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-500 dark:text-gray-400 font-medium text-sm font-sf-pro-text">Total Expenses</h3>
+                    <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                        <i class="fas fa-money-bill-wave text-[#34C759] dark:text-[#30D158]"></i>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-3xl font-bold text-gray-900 dark:text-white font-sf-pro-display">{{ user.currency }} {{ "%.2f"|format(total_expenses) }}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 font-sf-pro-text">All time</p>
+                </div>
+            </div>
+
+            <!-- Monthly Average -->
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6 stat-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-500 dark:text-gray-400 font-medium text-sm font-sf-pro-text">Monthly Average</h3>
+                    <div class="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                        <i class="fas fa-chart-line text-[#FF9500] dark:text-[#FF9F0A]"></i>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-3xl font-bold text-gray-900 dark:text-white font-sf-pro-display">{{ user.currency }} {{ "%.2f"|format(monthly_average) }}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 font-sf-pro-text">Average per month</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Recent Transactions -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+            <!-- Spending by Category -->
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6 lg:col-span-1 h-full">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 font-sf-pro-display">Spending by Category</h3>
+                <div class="chart-container" id="categoryChart">
+                    <canvas id="categoryPieChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Daily Expenses -->
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6 lg:col-span-2 h-full">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 font-sf-pro-display">Daily Expenses</h3>
+                <div class="chart-container" id="dailyChart">
+                    <canvas id="dailyLineChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6 mb-12">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white font-sf-pro-display">Recent Transactions</h3>
+                <a href="{{ url_for('views.expenses') }}" class="text-[#007AFF] hover:text-[#0066CC] font-medium text-sm transition-colors duration-200 font-sf-pro-text">View All</a>
+            </div>
+            
+            {% if recent_expenses %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-sf-pro-text">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-sf-pro-text">Description</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-sf-pro-text">Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-sf-pro-text">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for expense in recent_expenses %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-sf-pro-text">{{ expense.date.strftime('%b %d, %Y') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-sf-pro-text">{{ expense.description }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-sf-pro-text">
+                                {% if expense.category %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium category-badge"
+                                      data-color="{{ expense.category.color }}">
+                                    {% if expense.category.icon %}<i class="fas fa-{{ expense.category.icon }} mr-1"></i>{% endif %}
+                                    {{ expense.category.name }}
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                                    Uncategorized
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-sf-pro-text">{{ user.currency }} {{ "%.2f"|format(expense.amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-12">
+                <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-receipt text-gray-400 dark:text-gray-500 text-xl"></i>
+                </div>
+                <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2 font-sf-pro-display">No expenses yet</h4>
+                <p class="text-gray-500 dark:text-gray-400 mb-6 font-sf-pro-text">Start tracking your expenses to see them here</p>
+                <a href="{{ url_for('views.add_expense') }}" class="bg-[#007AFF] hover:bg-[#0066CC] text-white font-medium px-6 py-3 rounded-2xl transition-colors duration-200 font-sf-pro-text inline-flex items-center space-x-2">
+                    <i class="fas fa-plus text-sm"></i>
+                    <span>Add Your First Expense</span>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Animate progress bar
+        setTimeout(() => {
+            document.querySelector('.progress-bar').classList.add('animated');
+        }, 300);
+
+        // Animate stat cards
+        const statCards = document.querySelectorAll('.stat-card');
+        statCards.forEach(card => {
+            setTimeout(() => {
+                card.classList.add('visible');
+            }, 100);
+        });
+
+        // Animate charts
+        const chartContainers = document.querySelectorAll('.chart-container');
+        chartContainers.forEach(container => {
+            setTimeout(() => {
+                container.classList.add('visible');
+            }, 500);
+        });
+
+        // Category Pie Chart
+        const categoryCtx = document.getElementById('categoryPieChart').getContext('2d');
+        const categoryData = {
+            labels: JSON.parse('{{ chart_categories|tojson|safe }}'),
+            datasets: [{
+                data: JSON.parse('{{ chart_amounts|tojson|safe }}'),
+                backgroundColor: [
+                    '#FF9500', '#FF2D55', '#5856D6', '#007AFF', '#34C759', '#AF52DE', '#FF3B30',
+                    '#5AC8FA', '#FFCC00', '#64D2FF', '#30B0C7', '#BF5AF2', '#FF375F'
+                ],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        };
+
+        const categoryChart = new Chart(categoryCtx, {
+            type: 'doughnut',
+            data: categoryData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: {
+                                family: 'SF Pro Text, system-ui, sans-serif',
+                                size: 12
+                            },
+                            color: document.documentElement.classList.contains('dark') ? '#E5E7EB' : '#4B5563',
+                            padding: 20,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: document.documentElement.classList.contains('dark') ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+                        titleColor: document.documentElement.classList.contains('dark') ? '#F3F4F6' : '#1F2937',
+                        bodyColor: document.documentElement.classList.contains('dark') ? '#E5E7EB' : '#4B5563',
+                        borderColor: document.documentElement.classList.contains('dark') ? 'rgba(75, 85, 99, 0.2)' : 'rgba(229, 231, 235, 0.8)',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 12,
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: {{ user.currency }} ${value.toFixed(2)} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true,
+                    duration: 1000,
+                    easing: 'easeOutCubic'
+                }
+            }
+        });
+
+        // Daily Expenses Line Chart
+        const dailyCtx = document.getElementById('dailyLineChart').getContext('2d');
+        const dailyData = {
+            labels: JSON.parse('{{ daily_expenses|map(attribute="date")|list|tojson|safe }}'),
+            datasets: [{
+                label: 'Daily Expenses',
+                data: JSON.parse('{{ daily_expenses|map(attribute="amount")|list|tojson|safe }}'),
+                borderColor: '#007AFF',
+                backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                borderWidth: 3,
+                pointBackgroundColor: '#FFFFFF',
+                pointBorderColor: '#007AFF',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                fill: true,
+                tension: 0.3
+            }]
+        };
+
+        const dailyChart = new Chart(dailyCtx, {
+            type: 'line',
+            data: dailyData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        },
+                        ticks: {
+                            font: {
+                                family: 'SF Pro Text, system-ui, sans-serif',
+                                size: 12
+                            },
+                            color: document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#6B7280',
+                            callback: function(value, index) {
+                                const date = new Date(dailyData.labels[index]);
+                                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                            }
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: document.documentElement.classList.contains('dark') ? 'rgba(75, 85, 99, 0.1)' : 'rgba(229, 231, 235, 0.5)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            font: {
+                                family: 'SF Pro Text, system-ui, sans-serif',
+                                size: 12
+                            },
+                            color: document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#6B7280',
+                            callback: function(value) {
+                                return '{{ user.currency }} ' + value.toFixed(0);
+                            }
+                        },
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: document.documentElement.classList.contains('dark') ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+                        titleColor: document.documentElement.classList.contains('dark') ? '#F3F4F6' : '#1F2937',
+                        bodyColor: document.documentElement.classList.contains('dark') ? '#E5E7EB' : '#4B5563',
+                        borderColor: document.documentElement.classList.contains('dark') ? 'rgba(75, 85, 99, 0.2)' : 'rgba(229, 231, 235, 0.8)',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 12,
+                        displayColors: false,
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                const date = new Date(tooltipItems[0].label);
+                                return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                            },
+                            label: function(context) {
+                                return 'Amount: {{ user.currency }} ' + context.raw.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutCubic'
+                }
+            }
+        });
+        
+        // Set category badge color
+        const categoryBadges = document.querySelectorAll('.category-badge');
+        categoryBadges.forEach(badge => {
+            const color = badge.getAttribute('data-color');
+            badge.style.setProperty('--category-color', color);
+        });
+    });
+</script>
+{% endblock %}

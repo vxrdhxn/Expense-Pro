@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block title %}Home - ExpenseTracker{% endblock %}
+
+{% block styles %}
+<style>
+    /* CSS Variables */
+    :root {
+        --budget-progress: {{ budget_progress }}%;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .chart-container.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .progress-bar-container {
+        width: 100%;
+        height: 6px;
+        background-color: rgba(0, 122, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background-color: #007AFF;
+        border-radius: 3px;
+        transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+        width: 0;
+    }
+
+    .progress-bar.animated {
+        width: var(--budget-progress);
+    }
+
+    .trend-indicator {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-weight: 500;
+        font-size: 0.875rem;
+        transition: all 0.3s ease;
+    }
+
+    .trend-up {
+        background-color: rgba(255, 59, 48, 0.1);
+        color: rgb(255, 59, 48);
+    }
+
+    .trend-down {
+        background-color: rgba(52, 199, 89, 0.1);
+        color: rgb(52, 199, 89);
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <!-- Hero Section -->
+    <div class="relative overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+            <div class="text-center">
+                <h1 class="text-5xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#007AFF] to-[#5856D6] font-sf-pro-display mb-6">Track Your Expenses</h1>
+                <p class="text-xl text-gray-600 dark:text-gray-400 font-sf-pro-text mb-8 max-w-2xl mx-auto">
+                    Take control of your finances with our intuitive expense tracking system.
+                    Monitor your spending, set budgets, and achieve your financial goals.
+                </p>
+                <div class="flex justify-center space-x-4">
+                    <a href="{{ url_for('views.add_expense') }}" 
+                       class="bg-[#007AFF] hover:bg-[#0066CC] text-white font-medium px-8 py-3 rounded-2xl transition-colors duration-200 font-sf-pro-text inline-flex items-center space-x-2">
+                        <i class="fas fa-plus text-sm"></i>
+                        <span>Add Expense</span>
+                    </a>
+                    <a href="{{ url_for('views.monthly_report') }}" 
+                       class="bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm text-gray-900 dark:text-white hover:bg-gray-200/50 dark:hover:bg-gray-600/50 px-8 py-3 rounded-2xl transition-colors duration-200 font-sf-pro-text">
+                        View Reports
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Section -->
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 p-6 rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text mb-1">Total Expenses</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white font-sf-pro-display tracking-tight">{{ user.currency if user.currency else 'USD' }} {{ "%.2f"|format(total_expenses|default(0)) }}</p>
+                        </div>
+                        <div class="w-12 h-12 bg-[#007AFF]/10 dark:bg-[#007AFF]/20 rounded-2xl flex items-center justify-center">
+                            <i class="fas fa-dollar-sign text-[#007AFF] text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 p-6 rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text mb-1">Monthly Average</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white font-sf-pro-display tracking-tight">{{ user.currency if user.currency else 'USD' }} {{ "%.2f"|format(monthly_average|default(0)) }}</p>
+                        </div>
+                        <div class="w-12 h-12 bg-[#007AFF]/10 dark:bg-[#007AFF]/20 rounded-2xl flex items-center justify-center">
+                            <i class="fas fa-chart-line text-[#007AFF] text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 p-6 rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text mb-1">Budget Status</p>
+                            <div class="flex items-center space-x-2">
+                                <p class="text-2xl font-bold text-gray-900 dark:text-white font-sf-pro-display tracking-tight">{{ budget_progress }}%</p>
+                                {% if budget_progress > 90 %}
+                                <span class="trend-up">
+                                    <i class="fas fa-arrow-up mr-1"></i>
+                                    High
+                                </span>
+                                {% else %}
+                                <span class="trend-down">
+                                    <i class="fas fa-arrow-down mr-1"></i>
+                                    Good
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="w-12 h-12 bg-[#007AFF]/10 dark:bg-[#007AFF]/20 rounded-2xl flex items-center justify-center">
+                            <i class="fas fa-bullseye text-[#007AFF] text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="progress-bar-container">
+                            <div class="progress-bar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Category Distribution Chart -->
+                <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-6">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white font-sf-pro-display mb-6">Category Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Daily Expenses Chart -->
+                <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-6">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white font-sf-pro-display mb-6">Daily Expenses</h3>
+                    <div class="chart-container">
+                        <canvas id="dailyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Expenses Section -->
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white font-sf-pro-display mb-2">Recent Expenses</h2>
+                    <p class="text-gray-600 dark:text-gray-400 font-sf-pro-text">Your latest transactions</p>
+                </div>
+                <a href="{{ url_for('views.expenses') }}" 
+                   class="text-[#007AFF] hover:text-[#0066CC] transition-colors font-sf-pro-text inline-flex items-center space-x-2">
+                    <span>View All</span>
+                    <i class="fas fa-chevron-right text-sm"></i>
+                </a>
+            </div>
+
+            <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="text-left bg-gray-50/50 dark:bg-gray-700/50">
+                                <th class="px-6 py-4 text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text">Date</th>
+                                <th class="px-6 py-4 text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text">Category</th>
+                                <th class="px-6 py-4 text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text">Description</th>
+                                <th class="px-6 py-4 text-sm font-medium text-gray-600 dark:text-gray-400 font-sf-pro-text text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for expense in recent_expenses %}
+                            <tr class="border-t border-gray-200/50 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
+                                <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-sf-pro-text whitespace-nowrap">{{ expense.date.strftime('%Y-%m-%d') }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-sf-pro-text">{{ expense.category }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-sf-pro-text">{{ expense.description }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-sf-pro-text text-right">{{ user.currency if user.currency else 'USD' }} {{ "%.2f"|format(expense.amount) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    (function() {
+        // Parse template data
+        const chartData = {
+            categories: JSON.parse('{{ chart_categories|tojson|safe }}'),
+            amounts: JSON.parse('{{ chart_amounts|tojson|safe }}'),
+            dailyExpenses: JSON.parse('{{ daily_expenses|tojson|safe }}')
+        };
+
+        // Initialize animations when content is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Animate progress bar
+            setTimeout(() => {
+                document.querySelector('.progress-bar').classList.add('animated');
+            }, 500);
+
+            // Initialize chart containers animation
+            const chartContainers = document.querySelectorAll('.chart-container');
+            chartContainers.forEach((container, index) => {
+                setTimeout(() => {
+                    container.classList.add('visible');
+                }, 300 + 100 * index);
+            });
+
+            // Category Distribution Chart
+            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+            new Chart(categoryCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: chartData.categories,
+                    datasets: [{
+                        data: chartData.amounts,
+                        backgroundColor: [
+                            '#007AFF',
+                            '#5856D6',
+                            '#34C759',
+                            '#FF2D55',
+                            '#FF9500',
+                            '#AF52DE'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                font: {
+                                    family: "'SF Pro Text', system-ui, sans-serif",
+                                    size: 12
+                                }
+                            }
+                        }
+                    },
+                    cutout: '75%'
+                }
+            });
+
+            // Daily Expenses Chart
+            const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+            new Chart(dailyCtx, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(chartData.dailyExpenses),
+                    datasets: [{
+                        label: 'Daily Expenses',
+                        data: Object.values(chartData.dailyExpenses),
+                        borderColor: '#007AFF',
+                        backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                display: true,
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                font: {
+                                    family: "'SF Pro Text', system-ui, sans-serif",
+                                    size: 12
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    family: "'SF Pro Text', system-ui, sans-serif",
+                                    size: 12
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    })();
+</script>
+{% endblock %}
