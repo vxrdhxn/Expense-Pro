@@ -27,55 +27,34 @@ def is_strong_password(password):
         return False
     return True
 
+# Look for your login route handler, which might look something like this:
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('views.home'))  # Changed from dashboard to home
+        return redirect(url_for('views.home'))
         
     form = LoginForm()
-    if form.validate_on_submit():
-        with current_app.app_context():
-            user = User.query.filter_by(email=form.email.data).first()
-            if user and check_password_hash(user.password_hash, form.password.data):
-                login_user(user, remember=form.remember.data)
-                
-                # Check if user has categories, if not, add default ones
-                categories = Category.query.filter_by(user_id=user.id).all()
-                if not categories:
-                    try:
-                        # Default categories
-                        default_categories = [
-                            {'name': 'Food & Dining', 'color': '#FF6B6B', 'icon': 'fas fa-utensils'},
-                            {'name': 'Transportation', 'color': '#4ECDC4', 'icon': 'fas fa-car'},
-                            {'name': 'Shopping', 'color': '#45B7D1', 'icon': 'fas fa-shopping-bag'},
-                            {'name': 'Entertainment', 'color': '#96CEB4', 'icon': 'fas fa-film'},
-                            {'name': 'Housing', 'color': '#FFEEAD', 'icon': 'fas fa-home'},
-                            {'name': 'Utilities', 'color': '#D4A5A5', 'icon': 'fas fa-bolt'},
-                            {'name': 'Healthcare', 'color': '#9B6B6B', 'icon': 'fas fa-medkit'},
-                            {'name': 'Education', 'color': '#A8E6CF', 'icon': 'fas fa-graduation-cap'},
-                            {'name': 'Personal Care', 'color': '#FFB6B9', 'icon': 'fas fa-heart'},
-                            {'name': 'Travel', 'color': '#957DAD', 'icon': 'fas fa-plane'}
-                        ]
-                        
-                        from .models import Category
-                        for cat in default_categories:
-                            new_category = Category(
-                                name=cat['name'],
-                                color=cat['color'],
-                                icon=cat['icon'],
-                                user_id=user.id
-                            )
-                            db.session.add(new_category)
-                        db.session.commit()
-                    except Exception as e:
-                        db.session.rollback()
-                        print(f"Error adding default categories during login: {e}")
-                        # Continue even if categories fail to add
-                
+    
+    if request.method == 'POST':
+        # Direct approach without form validation
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        try:
+            # Find user
+            user = User.query.filter_by(email=email).first()
+            
+            if user and check_password_hash(user.password_hash, password):
+                # Login successful
+                login_user(user)
                 flash('Logged in successfully!', 'success')
-                next_page = request.args.get('next')
-                return redirect(next_page if next_page else url_for('views.home'))  # Changed from dashboard to home
-            flash('Invalid email or password.', 'error')
+                return redirect(url_for('views.home'))
+            else:
+                flash('Invalid email or password', 'error')
+        except Exception as e:
+            # Log the error
+            print(f"Login error: {str(e)}")
+            flash('An error occurred during login. Please try again.', 'error')
     
     return render_template('login.html', form=form)
 
